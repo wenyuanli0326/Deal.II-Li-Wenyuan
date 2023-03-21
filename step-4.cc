@@ -107,7 +107,7 @@ template <int dim>
 double BoundaryValues<dim>::value(const Point<dim> &p,
                                   const unsigned int /*component*/) const
 {
-  return p.square();
+  return 0.0;
 }
 
 
@@ -115,7 +115,7 @@ double BoundaryValues<dim>::value(const Point<dim> &p,
 
 
 
-
+// when is this being called?
 template <int dim>
 Step4<dim>::Step4()
   : fe(1)
@@ -127,7 +127,7 @@ Step4<dim>::Step4()
 template <int dim>
 void Step4<dim>::make_grid()
 {
-  GridGenerator::hyper_cube(triangulation, -1, 1);
+  GridGenerator::hyper_cube(triangulation, 0, 1);
   triangulation.refine_global(4);
 
   std::cout << "   Number of active cells: " << triangulation.n_active_cells()
