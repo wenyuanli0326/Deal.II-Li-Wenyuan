@@ -94,9 +94,10 @@ template <int dim>
 double RightHandSide<dim>::value(const Point<dim> &p,
                                  const unsigned int /*component*/) const
 {
-  double return_value = 0.0;
+  // f = 2 \pi^2 sin(\pi x) sin(\pi y)
+  double return_value = 2.0 * M_PI;
   for (unsigned int i = 0; i < dim; ++i)
-    return_value += 4.0 * std::pow(p(i), 4.0);
+    return_value *= sin(M_PI * p(i));
 
   return return_value;
 }
