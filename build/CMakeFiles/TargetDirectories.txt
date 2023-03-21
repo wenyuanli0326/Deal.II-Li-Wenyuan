@@ -1,0 +1,11 @@
+/Users/wenyuanli/workspace/project/step-4/build/CMakeFiles/step-4.dir
+/Users/wenyuanli/workspace/project/step-4/build/CMakeFiles/run.dir
+/Users/wenyuanli/workspace/project/step-4/build/CMakeFiles/sign.dir
+/Users/wenyuanli/workspace/project/step-4/build/CMakeFiles/debug.dir
+/Users/wenyuanli/workspace/project/step-4/build/CMakeFiles/release.dir
+/Users/wenyuanli/workspace/project/step-4/build/CMakeFiles/runclean.dir
+/Users/wenyuanli/workspace/project/step-4/build/CMakeFiles/distclean.dir
+/Users/wenyuanli/workspace/project/step-4/build/CMakeFiles/strip_comments.dir
+/Users/wenyuanli/workspace/project/step-4/build/CMakeFiles/info.dir
+/Users/wenyuanli/workspace/project/step-4/build/CMakeFiles/edit_cache.dir
+/Users/wenyuanli/workspace/project/step-4/build/CMakeFiles/rebuild_cache.dir
