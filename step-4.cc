@@ -41,6 +41,7 @@
 #include <iostream>
 
 #include <deal.II/base/logstream.h>
+#include <ostream>
 
 using namespace dealii;
 
@@ -64,9 +65,10 @@ private:
   DoFHandler<dim>    dof_handler;
 
   SparsityPattern      sparsity_pattern;
-  SparseMatrix<double> system_matrix;
+  SparseMatrix<double> Alocal;
+  SparseMatrix<double> Slocal;
 
-  Vector<double> solution;
+  // Vector<double> solution;
   Vector<double> system_rhs;
 };
 
@@ -111,7 +113,14 @@ double BoundaryValues<dim>::value(const Point<dim> &p,
 }
 
 
-
+template <int dim>
+double kappa(const Point<dim> &p)
+{
+  if (p.square() < 0.5 * 0.5)
+    return 20;
+  else
+    return 1;
+}
 
 
 
@@ -128,7 +137,7 @@ template <int dim>
 void Step4<dim>::make_grid()
 {
   GridGenerator::hyper_cube(triangulation, 0, 1);
-  triangulation.refine_global(4);
+  triangulation.refine_global(2);
 
   std::cout << "   Number of active cells: " << triangulation.n_active_cells()
             << std::endl
@@ -149,9 +158,11 @@ void Step4<dim>::setup_system()
   DoFTools::make_sparsity_pattern(dof_handler, dsp);
   sparsity_pattern.copy_from(dsp);
 
-  system_matrix.reinit(sparsity_pattern);
+  Alocal.reinit(sparsity_pattern);
+  Slocal.reinit(sparsity_pattern);
+  
 
-  solution.reinit(dof_handler.n_dofs());
+  // solution.reinit(dof_handler.n_dofs());
   system_rhs.reinit(dof_handler.n_dofs());
 }
 
@@ -171,25 +182,40 @@ void Step4<dim>::assemble_system()
 
   const unsigned int dofs_per_cell = fe.n_dofs_per_cell();
 
-  FullMatrix<double> cell_matrix(dofs_per_cell, dofs_per_cell);
-  Vector<double>     cell_rhs(dofs_per_cell);
+  FullMatrix<double> cell_matrixA(dofs_per_cell, dofs_per_cell);
+  FullMatrix<double> cell_matrixS(dofs_per_cell, dofs_per_cell);
+
+  Vector<double>     cell_rhs(dofs_per_cell);  // rhs is not needed for the cell problem
 
   std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
 
   for (const auto &cell : dof_handler.active_cell_iterators())
     {
       fe_values.reinit(cell);
-      cell_matrix = 0;
+      cell_matrixA = 0;
+      cell_matrixS = 0;
       cell_rhs    = 0;
 
-      for (const unsigned int q_index : fe_values.quadrature_point_indices())
+      for (const unsigned int q_index : fe_values.quadrature_point_indices()) {
+
+        const double current_coefficient = kappa(fe_values.quadrature_point(q_index));
+
         for (const unsigned int i : fe_values.dof_indices())
           {
-            for (const unsigned int j : fe_values.dof_indices())
-              cell_matrix(i, j) +=
-                (fe_values.shape_grad(i, q_index) * // grad phi_i(x_q)
+            for (const unsigned int j : fe_values.dof_indices()) {
+              cell_matrixA(i, j) +=
+                (current_coefficient *              // kappa(x_q)
+                 fe_values.shape_grad(i, q_index) * // grad phi_i(x_q)
                  fe_values.shape_grad(j, q_index) * // grad phi_j(x_q)
                  fe_values.JxW(q_index));           // dx
+
+              cell_matrixS(i, j) +=
+                (current_coefficient *               // kappa(x_q)
+                 fe_values.shape_value(i, q_index) * // phi_i(x_q)
+                 fe_values.shape_value(j, q_index) * // phi_j(x_q)
+                 fe_values.JxW(q_index));            // dx 
+
+            }
 
             const auto &x_q = fe_values.quadrature_point(q_index);
             cell_rhs(i) += (fe_values.shape_value(i, q_index) * // phi_i(x_q)
@@ -197,40 +223,143 @@ void Step4<dim>::assemble_system()
                             fe_values.JxW(q_index));            // dx
           }
 
+      }
+
       cell->get_dof_indices(local_dof_indices);
       for (const unsigned int i : fe_values.dof_indices())
         {
-          for (const unsigned int j : fe_values.dof_indices())
-            system_matrix.add(local_dof_indices[i],
+          for (const unsigned int j : fe_values.dof_indices()) {
+            Alocal.add(local_dof_indices[i],
                               local_dof_indices[j],
-                              cell_matrix(i, j));
+                              cell_matrixA(i, j));
+            Slocal.add(local_dof_indices[i],
+                              local_dof_indices[j],
+                              cell_matrixS(i, j));
 
+          }
+            
           system_rhs(local_dof_indices[i]) += cell_rhs(i);
         }
     }
 
-  std::map<types::global_dof_index, double> boundary_values;
-  VectorTools::interpolate_boundary_values(dof_handler,
-                                           0,
-                                           BoundaryValues<dim>(),
-                                           boundary_values);
-  MatrixTools::apply_boundary_values(boundary_values,
-                                     system_matrix,
-                                     solution,
-                                     system_rhs);
+// remember to modify the matrix Slocal
+  
+
+  // need to iterate every boundary node
+  // loop over golobal_dof_index
+  // if it is a boundary index
+  // set the value to 1
+  // all other boundary values remains 0 (don't need to change)
+
+  // std::cout << "   the row size of Alocal: " << Alocal.m()
+  //           << std::endl
+  //           << "   the column size of Alocal " << Alocal.n()
+  //           << std::endl;
+
+  // for (auto entry : boundary_values) {
+  //   std::cout << " the first entry (index) is: " << entry.first
+  //             << std::endl 
+  //             << " the second entry (value) is: " << entry.second
+  //             << std::endl;
+    
+  // }
+
+
 }
 
-
+/*
+Ainterior = A(interior_index, interior_index)
+AinteriorAll = A(interior_index, all_index)
+*/
 
 template <int dim>
 void Step4<dim>::solve()
 {
-  SolverControl            solver_control(1000, 1e-12);
-  SolverCG<Vector<double>> solver(solver_control);
-  solver.solve(system_matrix, solution, system_rhs, PreconditionIdentity());
+  
 
-  std::cout << "   " << solver_control.last_step()
+  std::map<types::global_dof_index, double> boundary_values;
+  
+  // this is needed to know the index of the boundary nodes
+  VectorTools::interpolate_boundary_values(dof_handler,
+                                            0,
+                                            BoundaryValues<dim>(),
+                                            boundary_values);
+
+  FullMatrix<double> Rsnap(Alocal.m(), boundary_values.size());
+  int j = 0;
+  for (auto keyValuePair = boundary_values.begin(); keyValuePair != boundary_values.end(); keyValuePair++) {
+    keyValuePair->second = 1.0;
+    for (auto otherPair = boundary_values.begin(); otherPair != boundary_values.end(); otherPair++) {
+      if (otherPair->first == keyValuePair->first) continue;
+      otherPair->second = 0.0;
+    }
+
+
+  for (auto entry : boundary_values) {
+    std::cout << " the first entry (index) is: " << entry.first
+              << std::endl 
+              << " the second entry (value) is: " << entry.second
+              << std::endl;
+    
+  }
+
+    Vector<double> solution;
+    solution.reinit(dof_handler.n_dofs());
+
+    MatrixTools::apply_boundary_values(boundary_values,
+                                     Alocal,
+                                     solution,
+                                     system_rhs, false);
+
+    SolverControl            solver_control(1000, 1e-12);
+    SolverCG<Vector<double>> solver(solver_control);
+
+
+    solver.solve(Alocal, solution, system_rhs, PreconditionIdentity());
+
+    std::cout << "   " << solver_control.last_step()
             << " CG iterations needed to obtain convergence." << std::endl;
+
+    for (unsigned long i = 0; i < Rsnap.m(); i++) {
+      std::cout << solution[i] << " ";
+    }
+    std::cout << std::endl;
+
+   
+    
+
+    for (unsigned long i = 0; i < Rsnap.m(); i++) {
+      Rsnap[i][j] = solution[i];
+    }
+    j++;
+
+  }
+
+  for (unsigned long i = 0; i < Rsnap.m(); i++) {
+    for (unsigned long j = 0; j < Rsnap.n(); j++) {
+      std::cout << Rsnap[i][j] << " ";
+    }
+    std::cout << std::endl;
+  }
+
+  
+
+
+
+  
+
+   
+    // std::cout << " the first dimension of Alocal is: " << Alocal.m()
+    //           << std::endl 
+    //           << " the second dimension of Alocal is: " << Alocal.n()
+    //           << std::endl
+    //           << " the dimension of  is: " << solution.size()
+    //           << std::endl
+    //           << " the dimension of  is: " << system_rhs.size()
+    //           << std::endl;
+
+ 
+
 }
 
 
@@ -238,15 +367,15 @@ void Step4<dim>::solve()
 template <int dim>
 void Step4<dim>::output_results() const
 {
-  DataOut<dim> data_out;
+  // DataOut<dim> data_out;
 
-  data_out.attach_dof_handler(dof_handler);
-  data_out.add_data_vector(solution, "solution");
+  // data_out.attach_dof_handler(dof_handler);
+  // // data_out.add_data_vector(solution, "solution");
 
-  data_out.build_patches();
+  // data_out.build_patches();
 
-  std::ofstream output(dim == 2 ? "solution-2d.vtk" : "solution-3d.vtk");
-  data_out.write_vtk(output);
+  // std::ofstream output(dim == 2 ? "solution-2d.vtk" : "solution-3d.vtk");
+  // data_out.write_vtk(output);
 }
 
 
@@ -274,10 +403,13 @@ int main()
     laplace_problem_2d.run();
   }
 
-  {
-    Step4<3> laplace_problem_3d;
-    laplace_problem_3d.run();
-  }
+  // {
+  //   Step4<3> laplace_problem_3d;
+  //   laplace_problem_3d.run();
+  // }
+
+
+ 
 
   return 0;
 }
