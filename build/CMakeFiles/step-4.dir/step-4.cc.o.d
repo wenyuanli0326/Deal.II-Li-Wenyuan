@@ -1919,4 +1919,7 @@ CMakeFiles/step-4.dir/step-4.cc.o: \
   /Users/wenyuanli/workspace/dealii-9.4.1-installed/include/deal.II/hp/fe_values.h \
   /Users/wenyuanli/workspace/dealii-9.4.1-installed/include/deal.II/numerics/data_postprocessor.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX12.3.sdk/usr/include/c++/v1/fstream \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX12.3.sdk/usr/include/c++/v1/filesystem
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX12.3.sdk/usr/include/c++/v1/filesystem \
+  /Users/wenyuanli/workspace/dealii-9.4.1-installed/include/deal.II/lac/petsc_sparse_matrix.h \
+  /Users/wenyuanli/workspace/dealii-9.4.1-installed/include/deal.II/lac/petsc_vector.h \
+  /Users/wenyuanli/workspace/dealii-9.4.1-installed/include/deal.II/lac/slepc_solver.h

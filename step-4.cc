@@ -43,6 +43,18 @@
 #include <deal.II/base/logstream.h>
 #include <ostream>
 
+
+// packages for the eigen spectral problem
+#include <deal.II/base/index_set.h>
+#include <deal.II/lac/petsc_sparse_matrix.h>
+#include <deal.II/lac/petsc_vector.h>
+#include <deal.II/lac/slepc_solver.h>
+
+
+
+
+// #include <Eigen/Dense>
+
 using namespace dealii;
 
 
@@ -335,20 +347,14 @@ void Step4<dim>::solve()
 
   }
 
-  for (unsigned long i = 0; i < Rsnap.m(); i++) {
-    for (unsigned long j = 0; j < Rsnap.n(); j++) {
-      std::cout << Rsnap[i][j] << " ";
-    }
-    std::cout << std::endl;
-  }
-
-  
+  // for (unsigned long i = 0; i < Rsnap.m(); i++) {
+  //   for (unsigned long j = 0; j < Rsnap.n(); j++) {
+  //     std::cout << Rsnap[i][j] << " ";
+  //   }
+  //   std::cout << std::endl;
+  // }
 
 
-
-  
-
-   
     // std::cout << " the first dimension of Alocal is: " << Alocal.m()
     //           << std::endl 
     //           << " the second dimension of Alocal is: " << Alocal.n()
@@ -359,6 +365,43 @@ void Step4<dim>::solve()
     //           << std::endl;
 
  
+  // FullMatrix<double> Asnap;
+  // FullMatrix<double> Ssnap;
+  // Rsnap.Tmmult(Asnap, Alocal, false);
+
+  // Asnap = Rsnap.transpose() * Alocal * Rsnap;
+
+
+
+
+// remember to modify the matrix Slocal
+
+  PETScWrappers::SparseMatrix             Asnap, Ssnap;
+
+// Asnap = Rsnap.transpose() * Alocal * Rsnap;
+// Ssnap = Rsnap.transpose() * Slocal * Rsnap;
+
+  
+
+
+  std::vector<PETScWrappers::MPI::Vector> eigenfunctions;
+  std::vector<double>                     eigenvalues;
+
+  SolverControl                    solver_control(dof_handler.n_dofs(), 1e-9);
+  SLEPcWrappers::SolverKrylovSchur eigensolver(solver_control);
+
+  eigensolver.set_which_eigenpairs(EPS_SMALLEST_REAL);
+ 
+  eigensolver.set_problem_type(EPS_GHEP);
+  
+  eigensolver.solve(Asnap,
+                    Ssnap,
+                    eigenvalues,
+                    eigenfunctions,
+                    eigenfunctions.size());
+
+
+
 
 }
 

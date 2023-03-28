@@ -1921,8 +1921,13 @@ CMakeFiles/step-4.dir/step-4.cc.o: /Users/wenyuanli/workspace/project/step-4/ste
   /Users/wenyuanli/workspace/dealii-9.4.1-installed/include/deal.II/hp/fe_values.h \
   /Users/wenyuanli/workspace/dealii-9.4.1-installed/include/deal.II/numerics/data_postprocessor.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX12.3.sdk/usr/include/c++/v1/fstream \
-  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX12.3.sdk/usr/include/c++/v1/filesystem
+  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX12.3.sdk/usr/include/c++/v1/filesystem \
+  /Users/wenyuanli/workspace/dealii-9.4.1-installed/include/deal.II/lac/petsc_sparse_matrix.h \
+  /Users/wenyuanli/workspace/dealii-9.4.1-installed/include/deal.II/lac/petsc_vector.h \
+  /Users/wenyuanli/workspace/dealii-9.4.1-installed/include/deal.II/lac/slepc_solver.h
 
+
+/Users/wenyuanli/workspace/dealii-9.4.1-installed/include/deal.II/lac/petsc_sparse_matrix.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX12.3.sdk/usr/include/c++/v1/filesystem:
 
@@ -3379,6 +3384,8 @@ CMakeFiles/step-4.dir/step-4.cc.o: /Users/wenyuanli/workspace/project/step-4/ste
 /opt/homebrew/include/boost/mpl/aux_/preprocessed/gcc/list.hpp:
 
 /opt/homebrew/include/boost/smart_ptr/detail/sp_thread_sleep.hpp:
+
+/Users/wenyuanli/workspace/dealii-9.4.1-installed/include/deal.II/lac/slepc_solver.h:
 
 /opt/homebrew/include/boost/parameter/value_type.hpp:
 
@@ -5017,6 +5024,8 @@ CMakeFiles/step-4.dir/step-4.cc.o: /Users/wenyuanli/workspace/project/step-4/ste
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX12.3.sdk/usr/include/c++/v1/__functional/mem_fn.h:
 
 /opt/homebrew/include/boost/mpl/pair.hpp:
+
+/Users/wenyuanli/workspace/dealii-9.4.1-installed/include/deal.II/lac/petsc_vector.h:
 
 /opt/homebrew/include/boost/type_traits/is_integral.hpp:
 
