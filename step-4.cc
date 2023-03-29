@@ -49,6 +49,7 @@
 #include <deal.II/lac/petsc_sparse_matrix.h>
 #include <deal.II/lac/petsc_vector.h>
 #include <deal.II/lac/slepc_solver.h>
+#include <vector>
 
 
 
@@ -133,6 +134,11 @@ double kappa(const Point<dim> &p)
   else
     return 1;
 }
+
+// template <int dim>
+// FullMatrix<double> transpose(FullMatrix<double> matrix) {
+
+// }
 
 
 
@@ -298,6 +304,7 @@ void Step4<dim>::solve()
                                             boundary_values);
 
   FullMatrix<double> Rsnap(Alocal.m(), boundary_values.size());
+  // std::vector<dealii::Vector<double>> Rsnap;
   int j = 0;
   for (auto keyValuePair = boundary_values.begin(); keyValuePair != boundary_values.end(); keyValuePair++) {
     keyValuePair->second = 1.0;
@@ -307,13 +314,13 @@ void Step4<dim>::solve()
     }
 
 
-  for (auto entry : boundary_values) {
-    std::cout << " the first entry (index) is: " << entry.first
-              << std::endl 
-              << " the second entry (value) is: " << entry.second
-              << std::endl;
+  // for (auto entry : boundary_values) {
+  //   std::cout << " the first entry (index) is: " << entry.first
+  //             << std::endl 
+  //             << " the second entry (value) is: " << entry.second
+  //             << std::endl;
     
-  }
+  // }
 
     Vector<double> solution;
     solution.reinit(dof_handler.n_dofs());
@@ -338,7 +345,7 @@ void Step4<dim>::solve()
     std::cout << std::endl;
 
    
-    
+    // Rsnap[j] = solution;
 
     for (unsigned long i = 0; i < Rsnap.m(); i++) {
       Rsnap[i][j] = solution[i];
@@ -347,12 +354,12 @@ void Step4<dim>::solve()
 
   }
 
-  // for (unsigned long i = 0; i < Rsnap.m(); i++) {
-  //   for (unsigned long j = 0; j < Rsnap.n(); j++) {
-  //     std::cout << Rsnap[i][j] << " ";
-  //   }
-  //   std::cout << std::endl;
-  // }
+  for (unsigned long i = 0; i < Rsnap.m(); i++) {
+    for (unsigned long j = 0; j < Rsnap.n(); j++) {
+      std::cout << Rsnap[i][j] << " ";
+    }
+    std::cout << std::endl;
+  }
 
 
     // std::cout << " the first dimension of Alocal is: " << Alocal.m()
@@ -371,34 +378,77 @@ void Step4<dim>::solve()
 
   // Asnap = Rsnap.transpose() * Alocal * Rsnap;
 
+ 
+// auto product = ChunkSparseMatrix<double >::matrix_scalar_product	(	const BlockVectorType & 	u,
+// const BlockVectorType & 	v 
 
+
+
+// FullMatrix<double> AlocalDense(Alocal.dense_matrix());
+// Alocal.mmult(SparseMatrix<numberC> &C, const SparseMatrix<numberB> &B);
+
+// Alocal.
+
+
+
+// std::cout << " the first dimension of AlocalDense is: " << AlocalDense.m()
+//               << std::endl 
+//               << " the second dimension of AlocalDense is: " << AlocalDense.n()
+//               << std::endl
+//               << " the first dimension of Rsnap is: " << Rsnap.m()
+//               << std::endl 
+//               << " the second dimension of Rsnap is: " << Rsnap.n()
+//               << std::endl
+//               << " the first dimension of RTAlocal is: " << RTAlocal.m()
+//               << std::endl 
+//               << " the second dimension of RTAlocal is: " << RTAlocal.n()
+//               << std::endl;
+
+FullMatrix<double> AlocalDense(Alocal.m(), Alocal.n());
+AlocalDense.copy_from(Alocal);	
+FullMatrix<double> RTAlocal(Rsnap.n(), Alocal.n());
+
+Rsnap.Tmmult(RTAlocal, AlocalDense);
+
+FullMatrix<double> Asnap(Rsnap.n(), Rsnap.n());
+RTAlocal.mmult(Asnap, Rsnap);
+
+
+FullMatrix<double> SlocalDense(Slocal.m(), Slocal.n());
+SlocalDense.copy_from(Slocal);	
+FullMatrix<double> RTSlocal(Rsnap.n(), Slocal.n());
+
+Rsnap.Tmmult(RTSlocal, SlocalDense);
+
+FullMatrix<double> Ssnap(Rsnap.n(), Rsnap.n());
+RTSlocal.mmult(Ssnap, Rsnap);
 
 
 // remember to modify the matrix Slocal
 
-  PETScWrappers::SparseMatrix             Asnap, Ssnap;
+//   PETScWrappers::SparseMatrix             Asnap, Ssnap;
 
-// Asnap = Rsnap.transpose() * Alocal * Rsnap;
-// Ssnap = Rsnap.transpose() * Slocal * Rsnap;
-
-  
+// // Asnap = Rsnap.transpose() * Alocal * Rsnap;
+// // Ssnap = Rsnap.transpose() * Slocal * Rsnap;
 
 
-  std::vector<PETScWrappers::MPI::Vector> eigenfunctions;
-  std::vector<double>                     eigenvalues;
 
-  SolverControl                    solver_control(dof_handler.n_dofs(), 1e-9);
-  SLEPcWrappers::SolverKrylovSchur eigensolver(solver_control);
 
-  eigensolver.set_which_eigenpairs(EPS_SMALLEST_REAL);
+//   std::vector<PETScWrappers::MPI::Vector> eigenfunctions;
+//   std::vector<double>                     eigenvalues;
+
+//   SolverControl                    solver_control(dof_handler.n_dofs(), 1e-9);
+//   SLEPcWrappers::SolverKrylovSchur eigensolver(solver_control);
+
+//   eigensolver.set_which_eigenpairs(EPS_SMALLEST_REAL);
  
-  eigensolver.set_problem_type(EPS_GHEP);
+//   eigensolver.set_problem_type(EPS_GHEP);
   
-  eigensolver.solve(Asnap,
-                    Ssnap,
-                    eigenvalues,
-                    eigenfunctions,
-                    eigenfunctions.size());
+//   eigensolver.solve(Asnap,
+//                     Ssnap,
+//                     eigenvalues,
+//                     eigenfunctions,
+//                     eigenfunctions.size());
 
 
 
