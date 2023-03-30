@@ -53,8 +53,42 @@
 
 
 
+ 
+#include <deal.II/base/logstream.h>
+#include <deal.II/base/quadrature_lib.h>
+#include <deal.II/base/function.h>
+#include <deal.II/base/function_parser.h>
+#include <deal.II/base/parameter_handler.h>
+#include <deal.II/base/utilities.h>
+#include <deal.II/grid/tria.h>
+#include <deal.II/grid/grid_generator.h>
+#include <deal.II/dofs/dof_handler.h>
+#include <deal.II/dofs/dof_tools.h>
+#include <deal.II/fe/fe_q.h>
+#include <deal.II/fe/fe_values.h>
+#include <deal.II/numerics/vector_tools.h>
+#include <deal.II/numerics/matrix_tools.h>
+#include <deal.II/numerics/data_out.h>
+#include <deal.II/lac/affine_constraints.h>
+#include <deal.II/lac/full_matrix.h>
+ 
+#include <deal.II/base/index_set.h>
+ 
+#include <deal.II/lac/petsc_sparse_matrix.h>
+#include <deal.II/lac/petsc_vector.h>
+ 
+#include <deal.II/lac/slepc_solver.h>
+ 
+#include <fstream>
+#include <iostream>
 
-// #include <Eigen/Dense>
+
+
+
+
+
+#include <../../eigen-3147391d946bb4b6c68edd901f2add6ac1f31f8c/Eigen/Dense>
+#include <../../eigen-3147391d946bb4b6c68edd901f2add6ac1f31f8c/Eigen/Eigenvalues>
 
 using namespace dealii;
 
@@ -283,6 +317,7 @@ void Step4<dim>::assemble_system()
   // }
 
 
+
 }
 
 /*
@@ -296,6 +331,9 @@ void Step4<dim>::solve()
   
 
   std::map<types::global_dof_index, double> boundary_values;
+  SparseMatrix<double> Alocaltemp;
+  Alocaltemp.reinit(sparsity_pattern);
+  Alocaltemp.copy_from(Alocal);
   
   // this is needed to know the index of the boundary nodes
   VectorTools::interpolate_boundary_values(dof_handler,
@@ -303,7 +341,7 @@ void Step4<dim>::solve()
                                             BoundaryValues<dim>(),
                                             boundary_values);
 
-  FullMatrix<double> Rsnap(Alocal.m(), boundary_values.size());
+  FullMatrix<double> Rsnap(Alocaltemp.m(), boundary_values.size());
   // std::vector<dealii::Vector<double>> Rsnap;
   int j = 0;
   for (auto keyValuePair = boundary_values.begin(); keyValuePair != boundary_values.end(); keyValuePair++) {
@@ -326,7 +364,7 @@ void Step4<dim>::solve()
     solution.reinit(dof_handler.n_dofs());
 
     MatrixTools::apply_boundary_values(boundary_values,
-                                     Alocal,
+                                     Alocaltemp,
                                      solution,
                                      system_rhs, false);
 
@@ -334,15 +372,15 @@ void Step4<dim>::solve()
     SolverCG<Vector<double>> solver(solver_control);
 
 
-    solver.solve(Alocal, solution, system_rhs, PreconditionIdentity());
+    solver.solve(Alocaltemp, solution, system_rhs, PreconditionIdentity());
 
     std::cout << "   " << solver_control.last_step()
             << " CG iterations needed to obtain convergence." << std::endl;
 
-    for (unsigned long i = 0; i < Rsnap.m(); i++) {
-      std::cout << solution[i] << " ";
-    }
-    std::cout << std::endl;
+    // for (unsigned long i = 0; i < Rsnap.m(); i++) {
+    //   std::cout << solution[i] << " ";
+    // }
+    // std::cout << std::endl;
 
    
     // Rsnap[j] = solution;
@@ -354,12 +392,12 @@ void Step4<dim>::solve()
 
   }
 
-  for (unsigned long i = 0; i < Rsnap.m(); i++) {
-    for (unsigned long j = 0; j < Rsnap.n(); j++) {
-      std::cout << Rsnap[i][j] << " ";
-    }
-    std::cout << std::endl;
-  }
+  // for (unsigned long i = 0; i < Rsnap.m(); i++) {
+  //   for (unsigned long j = 0; j < Rsnap.n(); j++) {
+  //     std::cout << Rsnap[i][j] << " ";
+  //   }
+  //   std::cout << std::endl;
+  // }
 
 
     // std::cout << " the first dimension of Alocal is: " << Alocal.m()
@@ -404,6 +442,25 @@ void Step4<dim>::solve()
 //               << " the second dimension of RTAlocal is: " << RTAlocal.n()
 //               << std::endl;
 
+
+
+// FullMatrix<double> AlocalDense(Alocal.m(), Alocal.n());
+// AlocalDense.copy_from(Alocal);	
+
+// for (unsigned long i = 0; i < AlocalDense.m(); i++) {
+//   for (unsigned long j = 0; j < AlocalDense.n(); j++) {
+    
+//     if (AlocalDense(i, j) != AlocalDense(j, i)) {
+//       std::cout << "not symmetric!!!" << std::endl;
+//       std::cout << " " << AlocalDense(i, j) << " " << AlocalDense(j, i) << std::endl;
+//       std::cout << " " << AlocalDense(i, j) - AlocalDense(j, i) << " " << std::endl;
+//     }
+//   }
+// }
+
+
+
+
 FullMatrix<double> AlocalDense(Alocal.m(), Alocal.n());
 AlocalDense.copy_from(Alocal);	
 FullMatrix<double> RTAlocal(Rsnap.n(), Alocal.n());
@@ -424,17 +481,58 @@ FullMatrix<double> Ssnap(Rsnap.n(), Rsnap.n());
 RTSlocal.mmult(Ssnap, Rsnap);
 
 
-// remember to modify the matrix Slocal
+
+
+
+
+Eigen::MatrixXf Asnap1(Asnap.m(), Asnap.n());
+Eigen::MatrixXf Ssnap1(Ssnap.m(), Ssnap.n());
+for (unsigned long i = 0; i < Asnap.m(); i++) {
+  for (unsigned long j = 0; j < Asnap.n(); j++) {
+    Asnap1(i, j) = Asnap(i, j);
+    Ssnap1(i, j) = Ssnap(i, j);
+
+    // // check symmetric
+    // if (abs(Asnap(i, j) - Asnap(j, i)) > 1e-10) {
+    //   std::cout << "not symmetric!!!" << std::endl;
+    //   // std::cout << " " << Asnap(i, j) << " " << Asnap(j, i) << std::endl;
+    //   std::cout << " " << Asnap(i, j) - Asnap(j, i) << " " << std::endl;
+    // }
+  }
+}
+
+
+// // Eigen::GeneralizedEigenSolver<dealii::FullMatrix<double>> ges;
+// // Eigen::GeneralizedEigenSolver<Eigen::MatrixXf> ges;
+// Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXf> ges;
+
+// ges.compute(Asnap1, Ssnap1);
+
+// // std::cout << "The (complex) numerators of the generalzied eigenvalues are: " << ges.alphas().transpose() << std::endl;
+// // std::cout << "The (real) denominatore of the generalzied eigenvalues are: " << ges.betas().transpose() << std::endl;
+// std::cout << "The (complex) generalzied eigenvalues are (alphas./beta): " << ges.eigenvalues().transpose() << std::endl;
+
+// Eigen::MatrixXd m(2,2);
+//   m(0,0) = 3;
+//   m(1,0) = 2.5;
+//   m(0,1) = -1;
+//   m(1,1) = m(1,0) + m(0,1);
+//   std::cout << m << std::endl;
+
+
+
+// // remember to modify the matrix Slocal
 
 //   PETScWrappers::SparseMatrix             Asnap, Ssnap;
 
-// // Asnap = Rsnap.transpose() * Alocal * Rsnap;
-// // Ssnap = Rsnap.transpose() * Slocal * Rsnap;
+// // // Asnap = Rsnap.transpose() * Alocal * Rsnap;
+// // // Ssnap = Rsnap.transpose() * Slocal * Rsnap;
+
+//   Rsnap.mmult( Asnap, Rsnap);	
 
 
-
-
-//   std::vector<PETScWrappers::MPI::Vector> eigenfunctions;
+//   // std::vector<PETScWrappers::MPI::Vector> eigenfunctions;
+//   std::vector<Vector<double>>             eigenfunctions;
 //   std::vector<double>                     eigenvalues;
 
 //   SolverControl                    solver_control(dof_handler.n_dofs(), 1e-9);
