@@ -503,15 +503,15 @@ for (unsigned long i = 0; i < Asnap.m(); i++) {
 
 
 // // Eigen::GeneralizedEigenSolver<dealii::FullMatrix<double>> ges;
-// // Eigen::GeneralizedEigenSolver<Eigen::MatrixXf> ges;
-// Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXf> ges;
+// Eigen::GeneralizedEigenSolver<Eigen::MatrixXf> ges;
+Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXf> ges;
 
-// ges.compute(Asnap1, Ssnap1);
+ges.compute(Asnap1, Ssnap1);
 
-// // std::cout << "The (complex) numerators of the generalzied eigenvalues are: " << ges.alphas().transpose() << std::endl;
-// // std::cout << "The (real) denominatore of the generalzied eigenvalues are: " << ges.betas().transpose() << std::endl;
-// std::cout << "The (complex) generalzied eigenvalues are (alphas./beta): " << ges.eigenvalues().transpose() << std::endl;
-
+// std::cout << "The (complex) numerators of the generalzied eigenvalues are: " << ges.alphas().transpose() << std::endl;
+// std::cout << "The (real) denominatore of the generalzied eigenvalues are: " << ges.betas().transpose() << std::endl;
+std::cout << "The (complex) generalzied eigenvalues are (alphas./beta): " << ges.eigenvalues().transpose() << std::endl;
+std::cout << "The (complex) generalzied eigenvectors are: " << ges.eigenvectors().transpose() << std::endl;
 // Eigen::MatrixXd m(2,2);
 //   m(0,0) = 3;
 //   m(1,0) = 2.5;
