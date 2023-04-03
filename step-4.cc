@@ -29,6 +29,8 @@
 #include <deal.II/base/function.h>
 #include <deal.II/numerics/vector_tools.h>
 #include <deal.II/numerics/matrix_tools.h>
+#include <deal.II/fe/component_mask.h>
+#include <deal.II/grid/filtered_iterator.h>
 #include <deal.II/lac/vector.h>
 #include <deal.II/lac/full_matrix.h>
 #include <deal.II/lac/sparse_matrix.h>
@@ -118,7 +120,8 @@ private:
   // Vector<double> solution;
   Vector<double> system_rhs;
 
-  int loc_refine_times = 2;
+  int loc_refine_times = 3;
+  Eigen::MatrixXd loc_basis0;
 };
 
 
@@ -509,14 +512,13 @@ unsigned int n_of_loc_basis = 5;
 // Eigen::MatrixXd loc_basis(Rsnap.m(), n_of_loc_basis);
 Eigen::MatrixXd eigenvectors = ges.eigenvectors();
 
-Eigen::MatrixXd loc_basis = Rsnap * eigenvectors.rightCols(n_of_loc_basis);
+loc_basis0 = Rsnap * eigenvectors.rightCols(n_of_loc_basis);
 
 // std::cout << "to current step" << std::endl;
 
 
 
 // build bilinear basis functions
-loc_refine_times = 3;
 int n_of_points = pow(2, loc_refine_times - 1) + 1;
 double side = 1 / pow(2, loc_refine_times - 1);
 Eigen::MatrixXd topleft(n_of_points, n_of_points);
@@ -539,13 +541,31 @@ Eigen::MatrixXd POU((int)pow(2, loc_refine_times) + 1, (int)pow(2, loc_refine_ti
 POU.block(0, 0, n_of_points, n_of_points) = topleft;
 POU.block(0, n_of_points, n_of_points, n_of_points - 1) = topright.rightCols(n_of_points - 1);
 POU.block(n_of_points, 0, n_of_points - 1, n_of_points) = botleft.bottomRows(n_of_points - 1);
-POU.block(n_of_points, n_of_points, n_of_points - 1, n_of_points - 1) = botright.bottomRightCorner(n_of_points - 1, n_of_points - 1);
+POU.bottomRightCorner(n_of_points - 1, n_of_points - 1) = botright.bottomRightCorner(n_of_points - 1, n_of_points - 1);
 
 // std::cout << topleft << std::endl;
 // std::cout << topright << std::endl;
 // std::cout << botleft << std::endl;
 // std::cout << botright << std::endl;
 // std::cout << POU << std::endl;
+
+// std::cout << loc_basis0 << std::endl;
+
+
+  hp::MappingCollection<dim, dim>         mapping;
+  std::map<types::global_dof_index, Point<dim>> support_points;
+  auto fe_collection = dof_handler.get_fe_collection();
+  ComponentMask mask = ComponentMask(fe_collection.n_components(), true);
+  
+  DoFTools::map_dofs_to_support_points(mapping, dof_handler, support_points, mask);
+
+  for (const auto &points : support_points) {
+    
+    std::cout << points.first << std::endl;
+    std::cout << points.second << std::endl;
+  }
+
+
 
 }
 
@@ -554,15 +574,27 @@ POU.block(n_of_points, n_of_points, n_of_points - 1, n_of_points - 1) = botright
 template <int dim>
 void Step4<dim>::output_results() const
 {
-  // DataOut<dim> data_out;
+  DataOut<dim> data_out;
 
-  // data_out.attach_dof_handler(dof_handler);
-  // // data_out.add_data_vector(solution, "solution");
+  data_out.attach_dof_handler(dof_handler);
 
-  // data_out.build_patches();
 
-  // std::ofstream output(dim == 2 ? "solution-2d.vtk" : "solution-3d.vtk");
-  // data_out.write_vtk(output);
+
+  Vector<double> solution;
+  solution.reinit(dof_handler.n_dofs());
+
+  for (int i = 0; i < loc_basis0.rows(); i++) {
+    solution[i] = loc_basis0(i, 1);
+  }
+  data_out.add_data_vector(solution, "solution");
+
+
+  data_out.build_patches();
+
+  std::ofstream output(dim == 2 ? "solution-2d.vtk" : "solution-3d.vtk");
+
+  data_out.write_vtk(output);
+
 }
 
 
