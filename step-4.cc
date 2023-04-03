@@ -486,8 +486,8 @@ RTSlocal.mmult(Ssnap, Rsnap);
 // // // Ssnap = Rsnap.transpose() * Slocal * Rsnap;
 
 
-Eigen::MatrixXf Asnap1(Asnap.m(), Asnap.n());
-Eigen::MatrixXf Ssnap1(Ssnap.m(), Ssnap.n());
+Eigen::MatrixXd Asnap1(Asnap.m(), Asnap.n());
+Eigen::MatrixXd Ssnap1(Ssnap.m(), Ssnap.n());
 for (unsigned long i = 0; i < Asnap.m(); i++) {
   for (unsigned long j = 0; j < Asnap.n(); j++) {
     Asnap1(i, j) = Asnap(i, j);
@@ -516,18 +516,14 @@ ges.compute(Asnap1, Ssnap1);
 // std::cout << "The (real) denominatore of the generalzied eigenvalues are: " << ges.betas().transpose() << std::endl;
 std::cout << "The (complex) generalzied eigenvalues are (alphas./beta): " << ges.eigenvalues().transpose() << std::endl;
 std::cout << "The (complex) generalzied eigenvectors are: " << ges.eigenvectors().transpose() << std::endl;
-// Eigen::MatrixXd m(2,2);
-//   m(0,0) = 3;
-//   m(1,0) = 2.5;
-//   m(0,1) = -1;
-//   m(1,1) = m(1,0) + m(0,1);
-//   std::cout << m << std::endl;
-
-
 
 // // remember to modify the matrix Slocal
 
+unsigned int n_of_loc_basis = 5;
+// Eigen::MatrixXd loc_basis(Rsnap.m(), n_of_loc_basis);
 
+FullMatrix<double> loc_basis(Rsnap.m(), n_of_loc_basis);
+Rsnap.mmult(loc_basis, loc_basis);
 
 
 }
