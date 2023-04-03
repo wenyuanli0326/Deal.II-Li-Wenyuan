@@ -482,7 +482,8 @@ RTSlocal.mmult(Ssnap, Rsnap);
 
 
 
-
+// // // Asnap = Rsnap.transpose() * Alocal * Rsnap;
+// // // Ssnap = Rsnap.transpose() * Slocal * Rsnap;
 
 
 Eigen::MatrixXf Asnap1(Asnap.m(), Asnap.n());
@@ -501,9 +502,12 @@ for (unsigned long i = 0; i < Asnap.m(); i++) {
   }
 }
 
+// get patch around cell 
+// build trangulation from patch
+// 
 
-// // Eigen::GeneralizedEigenSolver<dealii::FullMatrix<double>> ges;
-// Eigen::GeneralizedEigenSolver<Eigen::MatrixXf> ges;
+// // // Eigen::GeneralizedEigenSolver<dealii::FullMatrix<double>> ges;
+// // Eigen::GeneralizedEigenSolver<Eigen::MatrixXf> ges;
 Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXf> ges;
 
 ges.compute(Asnap1, Ssnap1);
@@ -522,31 +526,6 @@ std::cout << "The (complex) generalzied eigenvectors are: " << ges.eigenvectors(
 
 
 // // remember to modify the matrix Slocal
-
-//   PETScWrappers::SparseMatrix             Asnap, Ssnap;
-
-// // // Asnap = Rsnap.transpose() * Alocal * Rsnap;
-// // // Ssnap = Rsnap.transpose() * Slocal * Rsnap;
-
-//   Rsnap.mmult( Asnap, Rsnap);	
-
-
-//   // std::vector<PETScWrappers::MPI::Vector> eigenfunctions;
-//   std::vector<Vector<double>>             eigenfunctions;
-//   std::vector<double>                     eigenvalues;
-
-//   SolverControl                    solver_control(dof_handler.n_dofs(), 1e-9);
-//   SLEPcWrappers::SolverKrylovSchur eigensolver(solver_control);
-
-//   eigensolver.set_which_eigenpairs(EPS_SMALLEST_REAL);
- 
-//   eigensolver.set_problem_type(EPS_GHEP);
-  
-//   eigensolver.solve(Asnap,
-//                     Ssnap,
-//                     eigenvalues,
-//                     eigenfunctions,
-//                     eigenfunctions.size());
 
 
 
