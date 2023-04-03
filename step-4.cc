@@ -117,6 +117,8 @@ private:
 
   // Vector<double> solution;
   Vector<double> system_rhs;
+
+  int loc_refine_times = 2;
 };
 
 
@@ -188,8 +190,9 @@ Step4<dim>::Step4()
 template <int dim>
 void Step4<dim>::make_grid()
 {
+  
   GridGenerator::hyper_cube(triangulation, 0, 1);
-  triangulation.refine_global(2);
+  triangulation.refine_global(loc_refine_times);
 
   std::cout << "   Number of active cells: " << triangulation.n_active_cells()
             << std::endl
@@ -481,7 +484,9 @@ for (unsigned long i = 0; i < AlocalDense.m(); i++) {
 Eigen::MatrixXd Asnap = Rsnap.transpose() * Alocal0 * Rsnap;
 Eigen::MatrixXd Ssnap = Rsnap.transpose() * Slocal0 * Rsnap;
 
-
+// to ensure the matrices are symmetric
+Asnap = (Asnap + Asnap.transpose()) / 2;
+Ssnap = (Ssnap + Ssnap.transpose()) / 2;
 
 // get patch around cell 
 // build trangulation from patch
@@ -496,7 +501,7 @@ ges.compute(Asnap, Ssnap);
 // std::cout << "The (complex) numerators of the generalzied eigenvalues are: " << ges.alphas().transpose() << std::endl;
 // std::cout << "The (real) denominatore of the generalzied eigenvalues are: " << ges.betas().transpose() << std::endl;
 std::cout << "The (complex) generalzied eigenvalues are (alphas./beta): " << ges.eigenvalues().transpose() << std::endl;
-std::cout << "The (complex) generalzied eigenvectors are: " << ges.eigenvectors().transpose() << std::endl;
+// std::cout << "The (complex) generalzied eigenvectors are: " << ges.eigenvectors().transpose() << std::endl;
 
 // // remember to modify the matrix Slocal
 
@@ -506,8 +511,41 @@ Eigen::MatrixXd eigenvectors = ges.eigenvectors();
 
 Eigen::MatrixXd loc_basis = Rsnap * eigenvectors.rightCols(n_of_loc_basis);
 
-std::cout << "to current step" << std::endl;
+// std::cout << "to current step" << std::endl;
 
+
+
+// build bilinear basis functions
+loc_refine_times = 3;
+int n_of_points = pow(2, loc_refine_times - 1) + 1;
+double side = 1 / pow(2, loc_refine_times - 1);
+Eigen::MatrixXd topleft(n_of_points, n_of_points);
+Eigen::MatrixXd topright(n_of_points, n_of_points);
+Eigen::MatrixXd botleft(n_of_points, n_of_points);
+Eigen::MatrixXd botright(n_of_points, n_of_points);
+for (int i = 0; i < n_of_points; i++) {
+  for (int j = 0; j < n_of_points; j++) {
+    double y = (n_of_points - 1 - i) * side;
+    double x = j * side;
+    topleft(i, j) = x * (1.0 - y);
+    topright(i, j) = (1.0 - x) * (1.0 - y);
+    botleft(i, j) = x * y;
+    botright(i, j) = (1.0 - x) * y;
+  }
+}
+
+// partion of unity
+Eigen::MatrixXd POU((int)pow(2, loc_refine_times) + 1, (int)pow(2, loc_refine_times) + 1);
+POU.block(0, 0, n_of_points, n_of_points) = topleft;
+POU.block(0, n_of_points, n_of_points, n_of_points - 1) = topright.rightCols(n_of_points - 1);
+POU.block(n_of_points, 0, n_of_points - 1, n_of_points) = botleft.bottomRows(n_of_points - 1);
+POU.block(n_of_points, n_of_points, n_of_points - 1, n_of_points - 1) = botright.bottomRightCorner(n_of_points - 1, n_of_points - 1);
+
+// std::cout << topleft << std::endl;
+// std::cout << topright << std::endl;
+// std::cout << botleft << std::endl;
+// std::cout << botright << std::endl;
+// std::cout << POU << std::endl;
 
 }
 
