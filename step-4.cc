@@ -341,8 +341,8 @@ void Step4<dim>::solve()
                                             BoundaryValues<dim>(),
                                             boundary_values);
 
-  FullMatrix<double> Rsnap(Alocaltemp.m(), boundary_values.size());
-  // std::vector<dealii::Vector<double>> Rsnap;
+  
+  Eigen::MatrixXd Rsnap(Alocaltemp.m(), boundary_values.size());
   int j = 0;
   for (auto keyValuePair = boundary_values.begin(); keyValuePair != boundary_values.end(); keyValuePair++) {
     keyValuePair->second = 1.0;
@@ -385,11 +385,12 @@ void Step4<dim>::solve()
    
     // Rsnap[j] = solution;
 
-    for (unsigned long i = 0; i < Rsnap.m(); i++) {
-      Rsnap[i][j] = solution[i];
+    for (auto i = 0; i < Rsnap.rows(); i++) {
+      Rsnap(i,j) = solution[i];
     }
     j++;
 
+  std::cout << "to current step0" << std::endl;
   }
 
   // for (unsigned long i = 0; i < Rsnap.m(); i++) {
@@ -459,48 +460,28 @@ void Step4<dim>::solve()
 // }
 
 
-
+std::cout << "to current step1" << std::endl;
 
 FullMatrix<double> AlocalDense(Alocal.m(), Alocal.n());
 AlocalDense.copy_from(Alocal);	
-FullMatrix<double> RTAlocal(Rsnap.n(), Alocal.n());
-
-Rsnap.Tmmult(RTAlocal, AlocalDense);
-
-FullMatrix<double> Asnap(Rsnap.n(), Rsnap.n());
-RTAlocal.mmult(Asnap, Rsnap);
-
-
 FullMatrix<double> SlocalDense(Slocal.m(), Slocal.n());
-SlocalDense.copy_from(Slocal);	
-FullMatrix<double> RTSlocal(Rsnap.n(), Slocal.n());
+SlocalDense.copy_from(Slocal);
+Eigen::MatrixXd Alocal0(Alocal.m(), Alocal.n());
+Eigen::MatrixXd Slocal0(Alocal.m(), Alocal.n());
+for (unsigned long i = 0; i < AlocalDense.m(); i++) {
+  for (unsigned long j = 0; j < AlocalDense.n(); j++) {
 
-Rsnap.Tmmult(RTSlocal, SlocalDense);
-
-FullMatrix<double> Ssnap(Rsnap.n(), Rsnap.n());
-RTSlocal.mmult(Ssnap, Rsnap);
-
-
-
-// // // Asnap = Rsnap.transpose() * Alocal * Rsnap;
-// // // Ssnap = Rsnap.transpose() * Slocal * Rsnap;
-
-
-Eigen::MatrixXd Asnap1(Asnap.m(), Asnap.n());
-Eigen::MatrixXd Ssnap1(Ssnap.m(), Ssnap.n());
-for (unsigned long i = 0; i < Asnap.m(); i++) {
-  for (unsigned long j = 0; j < Asnap.n(); j++) {
-    Asnap1(i, j) = Asnap(i, j);
-    Ssnap1(i, j) = Ssnap(i, j);
-
-    // // check symmetric
-    // if (abs(Asnap(i, j) - Asnap(j, i)) > 1e-10) {
-    //   std::cout << "not symmetric!!!" << std::endl;
-    //   // std::cout << " " << Asnap(i, j) << " " << Asnap(j, i) << std::endl;
-    //   std::cout << " " << Asnap(i, j) - Asnap(j, i) << " " << std::endl;
-    // }
+    Alocal0(i, j) = AlocalDense[i][j];
+    Slocal0(i, j) = SlocalDense[i][j];
   }
 }
+
+
+
+Eigen::MatrixXd Asnap = Rsnap.transpose() * Alocal0 * Rsnap;
+Eigen::MatrixXd Ssnap = Rsnap.transpose() * Slocal0 * Rsnap;
+
+
 
 // get patch around cell 
 // build trangulation from patch
@@ -508,9 +489,9 @@ for (unsigned long i = 0; i < Asnap.m(); i++) {
 
 // // // Eigen::GeneralizedEigenSolver<dealii::FullMatrix<double>> ges;
 // // Eigen::GeneralizedEigenSolver<Eigen::MatrixXf> ges;
-Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXf> ges;
+Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXd> ges;
 
-ges.compute(Asnap1, Ssnap1);
+ges.compute(Asnap, Ssnap);
 
 // std::cout << "The (complex) numerators of the generalzied eigenvalues are: " << ges.alphas().transpose() << std::endl;
 // std::cout << "The (real) denominatore of the generalzied eigenvalues are: " << ges.betas().transpose() << std::endl;
@@ -521,9 +502,11 @@ std::cout << "The (complex) generalzied eigenvectors are: " << ges.eigenvectors(
 
 unsigned int n_of_loc_basis = 5;
 // Eigen::MatrixXd loc_basis(Rsnap.m(), n_of_loc_basis);
+Eigen::MatrixXd eigenvectors = ges.eigenvectors();
 
-FullMatrix<double> loc_basis(Rsnap.m(), n_of_loc_basis);
-Rsnap.mmult(loc_basis, loc_basis);
+Eigen::MatrixXd loc_basis = Rsnap * eigenvectors.rightCols(n_of_loc_basis);
+
+std::cout << "to current step" << std::endl;
 
 
 }
