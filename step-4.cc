@@ -121,7 +121,9 @@ private:
   Vector<double> system_rhs;
 
   int loc_refine_times = 3;
+  unsigned int n_of_loc_basis = 5;
   Eigen::MatrixXd loc_basis0;
+  Eigen::MatrixXd POU;
 };
 
 
@@ -168,10 +170,12 @@ double BoundaryValues<dim>::value(const Point<dim> &p,
 template <int dim>
 double kappa(const Point<dim> &p)
 {
-  if (p.square() < 0.5 * 0.5)
-    return 20;
-  else
+  if (p(0) >= 0.0 and p(0) <= 0.5 and 0.3 <= p(1) and p(1) <= 0.7) {
+    return 100;
+  } else {
     return 1;
+  }
+
 }
 
 // template <int dim>
@@ -508,7 +512,7 @@ std::cout << "The (complex) generalzied eigenvalues are (alphas./beta): " << ges
 
 // // remember to modify the matrix Slocal
 
-unsigned int n_of_loc_basis = 5;
+
 // Eigen::MatrixXd loc_basis(Rsnap.m(), n_of_loc_basis);
 Eigen::MatrixXd eigenvectors = ges.eigenvectors();
 
@@ -537,7 +541,7 @@ for (int i = 0; i < n_of_points; i++) {
 }
 
 // partion of unity
-Eigen::MatrixXd POU((int)pow(2, loc_refine_times) + 1, (int)pow(2, loc_refine_times) + 1);
+
 POU.block(0, 0, n_of_points, n_of_points) = topleft;
 POU.block(0, n_of_points, n_of_points, n_of_points - 1) = topright.rightCols(n_of_points - 1);
 POU.block(n_of_points, 0, n_of_points - 1, n_of_points) = botleft.bottomRows(n_of_points - 1);
@@ -552,18 +556,18 @@ POU.bottomRightCorner(n_of_points - 1, n_of_points - 1) = botright.bottomRightCo
 // std::cout << loc_basis0 << std::endl;
 
 
-  hp::MappingCollection<dim, dim>         mapping;
-  std::map<types::global_dof_index, Point<dim>> support_points;
-  auto fe_collection = dof_handler.get_fe_collection();
-  ComponentMask mask = ComponentMask(fe_collection.n_components(), true);
+  // hp::MappingCollection<dof_handler.n_dofs(), dim>         mapping;
+  // std::map<types::global_dof_index, Point<dim>> support_points;
+  // auto fe_collection = dof_handler.get_fe_collection();
+  // ComponentMask mask = ComponentMask(fe_collection.n_components(), true);
   
-  DoFTools::map_dofs_to_support_points(mapping, dof_handler, support_points, mask);
+  // DoFTools::map_dofs_to_support_points(mapping, dof_handler, support_points, mask);
 
-  for (const auto &points : support_points) {
+  // for (const auto &points : support_points) {
     
-    std::cout << points.first << std::endl;
-    std::cout << points.second << std::endl;
-  }
+  //   std::cout << points.first << std::endl;
+  //   std::cout << points.second << std::endl;
+  // }
 
 
 
@@ -574,26 +578,33 @@ POU.bottomRightCorner(n_of_points - 1, n_of_points - 1) = botright.bottomRightCo
 template <int dim>
 void Step4<dim>::output_results() const
 {
-  DataOut<dim> data_out;
+  // DataOut<dim> data_out;
 
-  data_out.attach_dof_handler(dof_handler);
-
-
-
-  Vector<double> solution;
-  solution.reinit(dof_handler.n_dofs());
-
-  for (int i = 0; i < loc_basis0.rows(); i++) {
-    solution[i] = loc_basis0(i, 1);
-  }
-  data_out.add_data_vector(solution, "solution");
+  // data_out.attach_dof_handler(dof_handler);
 
 
-  data_out.build_patches();
 
-  std::ofstream output(dim == 2 ? "solution-2d.vtk" : "solution-3d.vtk");
+  // Vector<double> solution;
+  // solution.reinit(dof_handler.n_dofs());
 
-  data_out.write_vtk(output);
+  // for (int i = 0; i < loc_basis0.rows(); i++) {
+  //   solution[i] = loc_basis0(i, n_of_loc_basis - 1);
+  // }
+  // std::cout << solution << std::endl;
+
+  // data_out.add_data_vector(solution, "solution");
+  
+
+  // data_out.build_patches();
+
+  // std::ofstream output(dim == 2 ? "solution-2d.vtk" : "solution-3d.vtk");
+
+  // data_out.write_vtk(output);
+
+  // DataOut<dim> data_out;
+  // data_out.add_data_vector(POU.reshaped(dof_handler.n_dofs(),1), "solution");
+  // std::ofstream output(dim == 2 ? "solution-2d.vtk" : "solution-3d.vtk");
+  // data_out.write_vtk(output);
 
 }
 
