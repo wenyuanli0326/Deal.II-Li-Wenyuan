@@ -120,7 +120,7 @@ private:
   // Vector<double> solution;
   Vector<double> system_rhs;
 
-  int loc_refine_times = 2;
+  int loc_refine_times = 1;
   unsigned int n_of_loc_basis = 5;
   Eigen::MatrixXd loc_basis0;
  
@@ -468,6 +468,11 @@ POU.bottomRightCorner(n_of_points - 1, n_of_points - 1) = botright.bottomRightCo
     std::cout << points.second << std::endl;
   }
 
+  for (const auto pair : boundary_values) {
+    std::cout << pair.first << std::endl;
+    std::cout << pair.second << std::endl;
+  }
+  // the numbering of support_points is the same as in the dof_handler
 
 
 }
