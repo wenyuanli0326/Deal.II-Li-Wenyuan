@@ -180,11 +180,6 @@ double kappa(const Point<dim> &p)
 
 }
 
-// template <int dim>
-// FullMatrix<double> transpose(FullMatrix<double> matrix) {
-
-// }
-
 
 
 // when is this being called?
@@ -309,33 +304,12 @@ void Step4<dim>::assemble_system()
 // remember to modify the matrix Slocal
   
 
-  // need to iterate every boundary node
-  // loop over golobal_dof_index
-  // if it is a boundary index
-  // set the value to 1
-  // all other boundary values remains 0 (don't need to change)
-
-  // std::cout << "   the row size of Alocal: " << Alocal.m()
-  //           << std::endl
-  //           << "   the column size of Alocal " << Alocal.n()
-  //           << std::endl;
-
-  // for (auto entry : boundary_values) {
-  //   std::cout << " the first entry (index) is: " << entry.first
-  //             << std::endl 
-  //             << " the second entry (value) is: " << entry.second
-  //             << std::endl;
-    
-  // }
 
 
 
 }
 
-/*
-Ainterior = A(interior_index, interior_index)
-AinteriorAll = A(interior_index, all_index)
-*/
+
 
 template <int dim>
 void Step4<dim>::solve()
@@ -364,13 +338,6 @@ void Step4<dim>::solve()
     }
 
 
-  // for (auto entry : boundary_values) {
-  //   std::cout << " the first entry (index) is: " << entry.first
-  //             << std::endl 
-  //             << " the second entry (value) is: " << entry.second
-  //             << std::endl;
-    
-  // }
 
     Vector<double> solution;
     solution.reinit(dof_handler.n_dofs());
@@ -389,13 +356,7 @@ void Step4<dim>::solve()
     std::cout << "   " << solver_control.last_step()
             << " CG iterations needed to obtain convergence." << std::endl;
 
-    // for (unsigned long i = 0; i < Rsnap.m(); i++) {
-    //   std::cout << solution[i] << " ";
-    // }
-    // std::cout << std::endl;
 
-   
-    // Rsnap[j] = solution;
 
     for (auto i = 0; i < Rsnap.rows(); i++) {
       Rsnap(i,j) = solution[i];
@@ -405,71 +366,9 @@ void Step4<dim>::solve()
   std::cout << "to current step0" << std::endl;
   }
 
-  // for (unsigned long i = 0; i < Rsnap.m(); i++) {
-  //   for (unsigned long j = 0; j < Rsnap.n(); j++) {
-  //     std::cout << Rsnap[i][j] << " ";
-  //   }
-  //   std::cout << std::endl;
-  // }
-
-
-    // std::cout << " the first dimension of Alocal is: " << Alocal.m()
-    //           << std::endl 
-    //           << " the second dimension of Alocal is: " << Alocal.n()
-    //           << std::endl
-    //           << " the dimension of  is: " << solution.size()
-    //           << std::endl
-    //           << " the dimension of  is: " << system_rhs.size()
-    //           << std::endl;
-
- 
-  // FullMatrix<double> Asnap;
-  // FullMatrix<double> Ssnap;
-  // Rsnap.Tmmult(Asnap, Alocal, false);
-
-  // Asnap = Rsnap.transpose() * Alocal * Rsnap;
-
- 
-// auto product = ChunkSparseMatrix<double >::matrix_scalar_product	(	const BlockVectorType & 	u,
-// const BlockVectorType & 	v 
 
 
 
-// FullMatrix<double> AlocalDense(Alocal.dense_matrix());
-// Alocal.mmult(SparseMatrix<numberC> &C, const SparseMatrix<numberB> &B);
-
-// Alocal.
-
-
-
-// std::cout << " the first dimension of AlocalDense is: " << AlocalDense.m()
-//               << std::endl 
-//               << " the second dimension of AlocalDense is: " << AlocalDense.n()
-//               << std::endl
-//               << " the first dimension of Rsnap is: " << Rsnap.m()
-//               << std::endl 
-//               << " the second dimension of Rsnap is: " << Rsnap.n()
-//               << std::endl
-//               << " the first dimension of RTAlocal is: " << RTAlocal.m()
-//               << std::endl 
-//               << " the second dimension of RTAlocal is: " << RTAlocal.n()
-//               << std::endl;
-
-
-
-// FullMatrix<double> AlocalDense(Alocal.m(), Alocal.n());
-// AlocalDense.copy_from(Alocal);	
-
-// for (unsigned long i = 0; i < AlocalDense.m(); i++) {
-//   for (unsigned long j = 0; j < AlocalDense.n(); j++) {
-    
-//     if (AlocalDense(i, j) != AlocalDense(j, i)) {
-//       std::cout << "not symmetric!!!" << std::endl;
-//       std::cout << " " << AlocalDense(i, j) << " " << AlocalDense(j, i) << std::endl;
-//       std::cout << " " << AlocalDense(i, j) - AlocalDense(j, i) << " " << std::endl;
-//     }
-//   }
-// }
 
 
 std::cout << "to current step1" << std::endl;
@@ -554,20 +453,12 @@ POU.block(0, n_of_points, n_of_points, n_of_points - 1) = topright.rightCols(n_o
 POU.block(n_of_points, 0, n_of_points - 1, n_of_points) = botleft.bottomRows(n_of_points - 1);
 POU.bottomRightCorner(n_of_points - 1, n_of_points - 1) = botright.bottomRightCorner(n_of_points - 1, n_of_points - 1);
 
-// std::cout << topleft << std::endl;
-// std::cout << topright << std::endl;
-// std::cout << botleft << std::endl;
-// std::cout << botright << std::endl;
-// std::cout << POU << std::endl;
-
-// std::cout << loc_basis0 << std::endl;
 
 
-  // hp::MappingCollection<dim, dim>         mapping;
   MappingQ<dim> mapping(1);
   std::map<types::global_dof_index, Point<dim>> support_points;
   auto fe_collection = dof_handler.get_fe_collection();
-  // ComponentMask mask = ComponentMask(fe_collection.n_components(), true);
+ 
   
   DoFTools::map_dofs_to_support_points(mapping, dof_handler, support_points);
 
