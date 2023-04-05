@@ -120,10 +120,10 @@ private:
   // Vector<double> solution;
   Vector<double> system_rhs;
 
-  int loc_refine_times = 3;
+  int loc_refine_times = 2;
   unsigned int n_of_loc_basis = 5;
   Eigen::MatrixXd loc_basis0;
-  Eigen::MatrixXd POU;
+ 
 };
 
 
@@ -170,8 +170,10 @@ double BoundaryValues<dim>::value(const Point<dim> &p,
 template <int dim>
 double kappa(const Point<dim> &p)
 {
-  if (p(0) >= 0.0 and p(0) <= 0.5 and 0.3 <= p(1) and p(1) <= 0.7) {
-    return 100;
+  if (p(0) >= 0.1 and p(0) <= 0.5 and 0.2 <= p(1) and p(1) <= 0.4) {
+    return 1000;
+  } else if (p(0) >= 0.8 and p(0) <= 0.9 and 0.7 <= p(1) and p(1) <= 1.0) {
+    return 1000;
   } else {
     return 1;
   }
@@ -501,9 +503,12 @@ Ssnap = (Ssnap + Ssnap.transpose()) / 2;
 
 // // // Eigen::GeneralizedEigenSolver<dealii::FullMatrix<double>> ges;
 // // Eigen::GeneralizedEigenSolver<Eigen::MatrixXf> ges;
+
+
 Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXd> ges;
 
 ges.compute(Asnap, Ssnap);
+
 
 // std::cout << "The (complex) numerators of the generalzied eigenvalues are: " << ges.alphas().transpose() << std::endl;
 // std::cout << "The (real) denominatore of the generalzied eigenvalues are: " << ges.betas().transpose() << std::endl;
@@ -516,15 +521,17 @@ std::cout << "The (complex) generalzied eigenvalues are (alphas./beta): " << ges
 // Eigen::MatrixXd loc_basis(Rsnap.m(), n_of_loc_basis);
 Eigen::MatrixXd eigenvectors = ges.eigenvectors();
 
-loc_basis0 = Rsnap * eigenvectors.rightCols(n_of_loc_basis);
+loc_basis0 = Rsnap * eigenvectors.leftCols(n_of_loc_basis);
 
-// std::cout << "to current step" << std::endl;
+std::cout << "to current step" << std::endl;
 
 
 
 // build bilinear basis functions
+
 int n_of_points = pow(2, loc_refine_times - 1) + 1;
 double side = 1 / pow(2, loc_refine_times - 1);
+Eigen::MatrixXd POU((int)pow(2, loc_refine_times) + 1, (int)pow(2, loc_refine_times) + 1);
 Eigen::MatrixXd topleft(n_of_points, n_of_points);
 Eigen::MatrixXd topright(n_of_points, n_of_points);
 Eigen::MatrixXd botleft(n_of_points, n_of_points);
@@ -556,18 +563,19 @@ POU.bottomRightCorner(n_of_points - 1, n_of_points - 1) = botright.bottomRightCo
 // std::cout << loc_basis0 << std::endl;
 
 
-  // hp::MappingCollection<dof_handler.n_dofs(), dim>         mapping;
-  // std::map<types::global_dof_index, Point<dim>> support_points;
-  // auto fe_collection = dof_handler.get_fe_collection();
+  // hp::MappingCollection<dim, dim>         mapping;
+  MappingQ<dim> mapping(1);
+  std::map<types::global_dof_index, Point<dim>> support_points;
+  auto fe_collection = dof_handler.get_fe_collection();
   // ComponentMask mask = ComponentMask(fe_collection.n_components(), true);
   
-  // DoFTools::map_dofs_to_support_points(mapping, dof_handler, support_points, mask);
+  DoFTools::map_dofs_to_support_points(mapping, dof_handler, support_points);
 
-  // for (const auto &points : support_points) {
+  for (const auto &points : support_points) {
     
-  //   std::cout << points.first << std::endl;
-  //   std::cout << points.second << std::endl;
-  // }
+    std::cout << points.first << std::endl;
+    std::cout << points.second << std::endl;
+  }
 
 
 
@@ -578,28 +586,29 @@ POU.bottomRightCorner(n_of_points - 1, n_of_points - 1) = botright.bottomRightCo
 template <int dim>
 void Step4<dim>::output_results() const
 {
-  // DataOut<dim> data_out;
+  DataOut<dim> data_out;
 
-  // data_out.attach_dof_handler(dof_handler);
+  data_out.attach_dof_handler(dof_handler);
 
 
 
-  // Vector<double> solution;
-  // solution.reinit(dof_handler.n_dofs());
+  Vector<double> solution;
+  solution.reinit(dof_handler.n_dofs());
+  std::cout << "fsadf" << std::endl;
 
-  // for (int i = 0; i < loc_basis0.rows(); i++) {
-  //   solution[i] = loc_basis0(i, n_of_loc_basis - 1);
-  // }
-  // std::cout << solution << std::endl;
+  for (int i = 0; i < loc_basis0.rows(); i++) {
+    solution[i] = loc_basis0(i, 0);
+  }
+  std::cout << solution << std::endl;
 
-  // data_out.add_data_vector(solution, "solution");
+  data_out.add_data_vector(solution, "solution");
   
 
-  // data_out.build_patches();
+  data_out.build_patches();
 
-  // std::ofstream output(dim == 2 ? "solution-2d.vtk" : "solution-3d.vtk");
+  std::ofstream output(dim == 2 ? "solution-2d.vtk" : "solution-3d.vtk");
 
-  // data_out.write_vtk(output);
+  data_out.write_vtk(output);
 
   // DataOut<dim> data_out;
   // data_out.add_data_vector(POU.reshaped(dof_handler.n_dofs(),1), "solution");
