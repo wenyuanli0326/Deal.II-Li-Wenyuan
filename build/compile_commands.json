@@ -1,7 +1,0 @@
-[
-{
-  "directory": "/Users/wenyuanli/workspace/project/step-4/build",
-  "command": "/usr/bin/clang++ -DBOOST_NO_AUTO_PTR -DDEBUG -isystem /Users/wenyuanli/workspace/dealii-9.4.1-installed/include -isystem /Users/wenyuanli/workspace/dealii-9.4.1-installed/include/deal.II/bundled -isystem /opt/homebrew/include  -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX12.3.sdk -pedantic -fPIC -Wall -Wextra -Wmissing-braces -Woverloaded-virtual -Wpointer-arith -Wsign-compare -Wswitch -Wsynth -Wwrite-strings -Wno-psabi -Wfloat-conversion -Qunused-arguments -Wno-unsupported-friend -Wno-undefined-var-template -Wno-pass-failed -openmp-simd -ftemplate-depth=1024 -std=c++14 -Wno-parentheses -Wno-unused-local-typedefs -Og -ggdb -Wa,--compress-debug-sections -o CMakeFiles/step-4.dir/step-4.cc.o -c /Users/wenyuanli/workspace/project/step-4/step-4.cc",
-  "file": "/Users/wenyuanli/workspace/project/step-4/step-4.cc"
-}
-]
