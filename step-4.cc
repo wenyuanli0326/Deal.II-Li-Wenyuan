@@ -120,9 +120,10 @@ private:
   // Vector<double> solution;
   Vector<double> system_rhs;
 
-  int loc_refine_times = 1;
+  int loc_refine_times = 3;
   unsigned int n_of_loc_basis = 5;
-  Eigen::MatrixXd loc_basis0;
+
+  Eigen::MatrixXd loc_basis;
  
 };
 
@@ -371,108 +372,109 @@ void Step4<dim>::solve()
 
 
 
-std::cout << "to current step1" << std::endl;
+  std::cout << "to current step1" << std::endl;
 
-FullMatrix<double> AlocalDense(Alocal.m(), Alocal.n());
-AlocalDense.copy_from(Alocal);	
-FullMatrix<double> SlocalDense(Slocal.m(), Slocal.n());
-SlocalDense.copy_from(Slocal);
-Eigen::MatrixXd Alocal0(Alocal.m(), Alocal.n());
-Eigen::MatrixXd Slocal0(Alocal.m(), Alocal.n());
-for (unsigned long i = 0; i < AlocalDense.m(); i++) {
-  for (unsigned long j = 0; j < AlocalDense.n(); j++) {
+  FullMatrix<double> AlocalDense(Alocal.m(), Alocal.n());
+  AlocalDense.copy_from(Alocal);	
+  FullMatrix<double> SlocalDense(Slocal.m(), Slocal.n());
+  SlocalDense.copy_from(Slocal);
+  Eigen::MatrixXd Alocal0(Alocal.m(), Alocal.n());
+  Eigen::MatrixXd Slocal0(Alocal.m(), Alocal.n());
+  for (unsigned long i = 0; i < AlocalDense.m(); i++) {
+    for (unsigned long j = 0; j < AlocalDense.n(); j++) {
 
-    Alocal0(i, j) = AlocalDense[i][j];
-    Slocal0(i, j) = SlocalDense[i][j];
+      Alocal0(i, j) = AlocalDense[i][j];
+      Slocal0(i, j) = SlocalDense[i][j];
+    }
   }
-}
 
 
 
-Eigen::MatrixXd Asnap = Rsnap.transpose() * Alocal0 * Rsnap;
-Eigen::MatrixXd Ssnap = Rsnap.transpose() * Slocal0 * Rsnap;
+  Eigen::MatrixXd Asnap = Rsnap.transpose() * Alocal0 * Rsnap;
+  Eigen::MatrixXd Ssnap = Rsnap.transpose() * Slocal0 * Rsnap;
 
-// to ensure the matrices are symmetric
-Asnap = (Asnap + Asnap.transpose()) / 2;
-Ssnap = (Ssnap + Ssnap.transpose()) / 2;
+  // to ensure the matrices are symmetric
+  Asnap = (Asnap + Asnap.transpose()) / 2;
+  Ssnap = (Ssnap + Ssnap.transpose()) / 2;
 
-// get patch around cell 
-// build trangulation from patch
-// 
+  // get patch around cell 
+  // build trangulation from patch
+  // 
 
-// // // Eigen::GeneralizedEigenSolver<dealii::FullMatrix<double>> ges;
-// // Eigen::GeneralizedEigenSolver<Eigen::MatrixXf> ges;
-
-
-Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXd> ges;
-
-ges.compute(Asnap, Ssnap);
+  // // // Eigen::GeneralizedEigenSolver<dealii::FullMatrix<double>> ges;
+  // // Eigen::GeneralizedEigenSolver<Eigen::MatrixXf> ges;
 
 
-// std::cout << "The (complex) numerators of the generalzied eigenvalues are: " << ges.alphas().transpose() << std::endl;
-// std::cout << "The (real) denominatore of the generalzied eigenvalues are: " << ges.betas().transpose() << std::endl;
-std::cout << "The (complex) generalzied eigenvalues are (alphas./beta): " << ges.eigenvalues().transpose() << std::endl;
-// std::cout << "The (complex) generalzied eigenvectors are: " << ges.eigenvectors().transpose() << std::endl;
+  Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXd> ges;
 
-// // remember to modify the matrix Slocal
+  ges.compute(Asnap, Ssnap);
 
 
-// Eigen::MatrixXd loc_basis(Rsnap.m(), n_of_loc_basis);
-Eigen::MatrixXd eigenvectors = ges.eigenvectors();
+  // std::cout << "The (complex) numerators of the generalzied eigenvalues are: " << ges.alphas().transpose() << std::endl;
+  // std::cout << "The (real) denominatore of the generalzied eigenvalues are: " << ges.betas().transpose() << std::endl;
+  std::cout << "The (complex) generalzied eigenvalues are (alphas./beta): " << ges.eigenvalues().transpose() << std::endl;
+  // std::cout << "The (complex) generalzied eigenvectors are: " << ges.eigenvectors().transpose() << std::endl;
 
-loc_basis0 = Rsnap * eigenvectors.leftCols(n_of_loc_basis);
-
-std::cout << "to current step" << std::endl;
+  // // remember to modify the matrix Slocal
 
 
+  // Eigen::MatrixXd loc_basis(Rsnap.m(), n_of_loc_basis);
+  Eigen::MatrixXd eigenvectors = ges.eigenvectors();
+  Eigen::MatrixXd loc_basis0;
+  loc_basis0 = Rsnap * eigenvectors.leftCols(n_of_loc_basis);
 
-// build bilinear basis functions
+  std::cout << "to current step" << std::endl;
 
-int n_of_points = pow(2, loc_refine_times - 1) + 1;
-double side = 1 / pow(2, loc_refine_times - 1);
-Eigen::MatrixXd POU((int)pow(2, loc_refine_times) + 1, (int)pow(2, loc_refine_times) + 1);
-Eigen::MatrixXd topleft(n_of_points, n_of_points);
-Eigen::MatrixXd topright(n_of_points, n_of_points);
-Eigen::MatrixXd botleft(n_of_points, n_of_points);
-Eigen::MatrixXd botright(n_of_points, n_of_points);
-for (int i = 0; i < n_of_points; i++) {
-  for (int j = 0; j < n_of_points; j++) {
-    double y = (n_of_points - 1 - i) * side;
-    double x = j * side;
-    topleft(i, j) = x * (1.0 - y);
-    topright(i, j) = (1.0 - x) * (1.0 - y);
-    botleft(i, j) = x * y;
-    botright(i, j) = (1.0 - x) * y;
+
+
+  // build bilinear basis functions
+
+  int n_of_points = (int) ((int) round(pow(2, loc_refine_times - 1))) + 1;
+  double side = 1 / pow(2, loc_refine_times - 1);
+  Eigen::MatrixXd POU((int)pow(2, loc_refine_times) + 1, (int)pow(2, loc_refine_times) + 1);
+  Eigen::MatrixXd topleft(n_of_points, n_of_points);
+  Eigen::MatrixXd topright(n_of_points, n_of_points);
+  Eigen::MatrixXd botleft(n_of_points, n_of_points);
+  Eigen::MatrixXd botright(n_of_points, n_of_points);
+  for (int i = 0; i < n_of_points; i++) {
+    for (int j = 0; j < n_of_points; j++) {
+      double y = (n_of_points - 1 - i) * side;
+      double x = j * side;
+      topleft(i, j) = x * (1.0 - y);
+      topright(i, j) = (1.0 - x) * (1.0 - y);
+      botleft(i, j) = x * y;
+      botright(i, j) = (1.0 - x) * y;
+    }
   }
-}
 
-// partion of unity
+  // partion of unity
 
-POU.block(0, 0, n_of_points, n_of_points) = topleft;
-POU.block(0, n_of_points, n_of_points, n_of_points - 1) = topright.rightCols(n_of_points - 1);
-POU.block(n_of_points, 0, n_of_points - 1, n_of_points) = botleft.bottomRows(n_of_points - 1);
-POU.bottomRightCorner(n_of_points - 1, n_of_points - 1) = botright.bottomRightCorner(n_of_points - 1, n_of_points - 1);
+  POU.block(0, 0, n_of_points, n_of_points) = topleft;
+  POU.block(0, n_of_points, n_of_points, n_of_points - 1) = topright.rightCols(n_of_points - 1);
+  POU.block(n_of_points, 0, n_of_points - 1, n_of_points) = botleft.bottomRows(n_of_points - 1);
+  POU.bottomRightCorner(n_of_points - 1, n_of_points - 1) = botright.bottomRightCorner(n_of_points - 1, n_of_points - 1);
 
 
 
   MappingQ<dim> mapping(1);
   std::map<types::global_dof_index, Point<dim>> support_points;
   auto fe_collection = dof_handler.get_fe_collection();
- 
-  
+
+
   DoFTools::map_dofs_to_support_points(mapping, dof_handler, support_points);
 
-  for (const auto &points : support_points) {
-    
-    std::cout << points.first << std::endl;
-    std::cout << points.second << std::endl;
+
+  Eigen::VectorXd POUvector(POU.rows() * POU.cols());
+  int i = 0;
+  for (auto support_point : support_points) {
+    Point<dim> coordinates = support_point.second;
+    int nx = (int) round(coordinates(0) / side);
+    int ny = (int) round(coordinates(1) / side);
+    POUvector(i) = POU(POU.rows() - 1 - ny, nx);
+    i += 1; 
   }
 
-  for (const auto pair : boundary_values) {
-    std::cout << pair.first << std::endl;
-    std::cout << pair.second << std::endl;
-  }
-  // the numbering of support_points is the same as in the dof_handler
+  loc_basis = loc_basis0.array().colwise() * POUvector.array();
 
 
 }
@@ -490,10 +492,10 @@ void Step4<dim>::output_results() const
 
   Vector<double> solution;
   solution.reinit(dof_handler.n_dofs());
-  std::cout << "fsadf" << std::endl;
+  
 
-  for (int i = 0; i < loc_basis0.rows(); i++) {
-    solution[i] = loc_basis0(i, 0);
+  for (int i = 0; i < loc_basis.rows(); i++) {
+    solution[i] = loc_basis(i, 1);
   }
   std::cout << solution << std::endl;
 
