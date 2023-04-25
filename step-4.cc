@@ -181,8 +181,8 @@ private:
 
   const double cube_start = 0;
   const double cube_end = 1;
-  int loc_refine_times = 1;
-  int global_refine_times = 1;
+  int loc_refine_times = 2;
+  int global_refine_times = 2;
   int total_refine_times = loc_refine_times + global_refine_times;
 
   unsigned int n_of_loc_basis = 5;
@@ -240,76 +240,49 @@ void Step4<dim>:: global_grid()
   std::vector<std::vector<active_type>> coarse_patches;
   coarse_patches.resize(coarse_centers.size());
 
-  dof_handler.distribute_dofs(fe);
-  for (const auto &cell : dof_handler.active_cell_iterators())
-    {
-      std::cout << "cell center: " << cell->center() << std::endl;
-      Point<dim> cell_center = cell->center();
-      for (unsigned long i = 0; i < coarse_centers.size(); i++ ) {
-        Point<dim> coarse_center = coarse_centers[i];
-        if (abs(cell_center[0] - coarse_center[0]) < coarse_side && 
-            abs(cell_center[1] - coarse_center[1]) < coarse_side ) {
-              coarse_patches[i].push_back(cell);
-              
-            }
-      }
+
+  for (active_type cell : triangulation.active_cell_iterators()) {
+    std::cout << "cell center: " << cell->center() << std::endl;
+    Point<dim> cell_center = cell->center();
+    for (unsigned long i = 0; i < coarse_centers.size(); i++ ) {
+      Point<dim> coarse_center = coarse_centers[i];
+      if (abs(cell_center[0] - coarse_center[0]) < coarse_side && 
+        abs(cell_center[1] - coarse_center[1]) < coarse_side ) {
+          coarse_patches[i].push_back(cell);
+          
+        }
     }
+  }
 
-  
-
-
-
-// when I change 2 to dim, errors come up
-  Triangulation<2>::active_cell_iterator cell = triangulation.begin_active();
-  std::advance(cell, 3);  // do not get out of the limit!
-
-  std::cout << cell->center() << std::endl;
-  const auto patch = GridTools::get_patch_around_cell<Triangulation<2>>(cell);
-
-  for(auto patch_cell : patch)
-    std::cout << "PATCH: " << patch_cell->center() << std::endl;
-
-  using iterator_type = Triangulation<2>::cell_iterator;
-  using active_type   = Triangulation<2>::active_cell_iterator;
-
-  std::vector<active_type> my_patch;
-  my_patch.push_back(cell);
-  my_patch.push_back(cell->neighbor(0));
-  my_patch.push_back(cell->neighbor(0)->neighbor(2));
-  my_patch.push_back(cell->neighbor(1));
-  my_patch.push_back(cell->neighbor(1)->neighbor(3));
-  my_patch.push_back(cell->neighbor(2));
-  my_patch.push_back(cell->neighbor(2)->neighbor(1));
-  my_patch.push_back(cell->neighbor(3));
-  my_patch.push_back(cell->neighbor(3)->neighbor(0));
-
-  // why we use iterator_type instead of active_type
-  std::map<iterator_type, active_type> patch_to_global_triangulation_map;
-  Triangulation<2> patch_triangulation;
-
-  {
-    std::map<active_type, active_type>
-      patch_to_global_triangulation_map_temporary;
-
-    GridTools::build_triangulation_from_patch<Triangulation<2>>(
-      my_patch, patch_triangulation, patch_to_global_triangulation_map_temporary);
-
-    for (const auto &it : patch_to_global_triangulation_map_temporary)
+  int i = 0;
+  for (std::vector<active_type> coarse_patch : coarse_patches) 
     {
-      patch_to_global_triangulation_map[it.first] = it.second;
-      std::cout << it.first << " " << it.second << std::endl;
-    }
+      // why we use iterator_type instead of active_type
+      std::map<iterator_type, active_type> patch_to_global_triangulation_map;
+      Triangulation<2> patch_triangulation;
+
+      std::map<active_type, active_type> patch_to_global_triangulation_map_temporary;
+
+      GridTools::build_triangulation_from_patch<Triangulation<2>>(
+        coarse_patch, patch_triangulation, patch_to_global_triangulation_map_temporary);
+
+      // // do we need this ?
+      // for (const auto &it : patch_to_global_triangulation_map_temporary)
+      // {
+      //   patch_to_global_triangulation_map[it.first] = it.second;
+      //   std::cout << it.first << " " << it.second << std::endl;
+      // }
     
+      {
+        std::ofstream out("patch" + std::to_string(i) + ".svg");
+        GridOut       grid_out;
+        grid_out.write_svg(patch_triangulation, out);
+      }
+      i++;
+    }
 
-    patch_triangulation.refine_global(1);
-  }
 
-
-  {
-    std::ofstream out("patch.svg");
-    GridOut       grid_out;
-    grid_out.write_svg(patch_triangulation, out);
-  }
+ 
 
 
 }
