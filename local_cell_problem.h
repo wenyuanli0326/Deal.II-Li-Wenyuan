@@ -143,7 +143,8 @@ public:
   Local();
   void run();
   void setUp(Triangulation<dim> &input_triangulation, unsigned int input_n_of_loc_basis,
-             Eigen::MatrixXd input_POU, Point<dim> input_coarse_center);
+             Eigen::MatrixXd input_POU, Point<dim> input_coarse_center, 
+             double input_fine_side);
 
 private:
   void make_grid();
@@ -165,6 +166,7 @@ private:
 
   Eigen::MatrixXd POU;
   Point<dim> coarse_center;
+  double fine_side;
 
   unsigned int n_of_loc_basis;
 
@@ -178,12 +180,14 @@ private:
 // check this !! the &;
 template <int dim>
 void Local<dim>::setUp(Triangulation<dim> &input_triangulation, unsigned int input_n_of_loc_basis,
-                        Eigen::MatrixXd input_POU, Point<dim> input_coarse_center)
+                        Eigen::MatrixXd input_POU, Point<dim> input_coarse_center, 
+                        double input_fine_side)
 {
     triangulation.copy_triangulation(input_triangulation);
     n_of_loc_basis = input_n_of_loc_basis;
     POU = input_POU;
     coarse_center = input_coarse_center;
+    fine_side = input_fine_side;
     
 }
 
@@ -342,14 +346,6 @@ void Local<dim>::solve()
                                             BoundaryValues<dim>(),
                                             boundary_values);
 
-
-  for (auto entry : boundary_values) {
-    std::cout << " the first entry (index) is: " << entry.first
-              << std::endl 
-              << " the second entry (value) is: " << entry.second
-              << std::endl;
-    
-  }
   
   Eigen::MatrixXd Rsnap(Alocal.m(), boundary_values.size());
   int j = 0;    // column index for Rsnap
@@ -440,23 +436,23 @@ void Local<dim>::solve()
   DoFTools::map_dofs_to_support_points(mapping, dof_handler, support_points);
 
 
-  Eigen::VectorXd POUvector(POU.rows() * POU.cols());
+  Eigen::VectorXd POUvector(support_points.size());
   
 // does the order in the support points match the order in dof numbering?
 // yes, they match. I checked the support points and the boundary_values.
-//   int i = 0;
+
+  int move_position = POU.cols() / 2;
+  
   for (auto support_point : support_points) {
     Point<dim> coordinates = support_point.second;
-    // int nx = (int) round(coordinates(0) / side);
-    // int ny = (int) round(coordinates(1) / side);
-    // POUvector(i) = POU(POU.rows() - 1 - ny, nx);
-    // i += 1; 
-    std::cout << "support_point.first = " << support_point.first << std::endl;
-    std::cout << "coordinates = " << coordinates << std::endl;
+    int positionx = (int) round((coordinates(0) - coarse_center[0]) / fine_side) + move_position;
+    int positiony = (int) round((coordinates(1) - coarse_center[1]) / fine_side) + move_position;
+    POUvector(support_point.first) = POU(POU.rows() - 1 - positiony, positionx);
+
   }
-  std::cout << " check point 4 " << std::endl;
+
   loc_basis = loc_basis0.array().colwise() * POUvector.array();
-    loc_basis = loc_basis0;
+  
 
 }
 
@@ -476,9 +472,9 @@ void Local<dim>::output_results() const
   
 
   for (int i = 0; i < loc_basis.rows(); i++) {
-    solution[i] = loc_basis(i, 1);
+    solution[i] = loc_basis(i, 0);
   }
-  std::cout << solution << std::endl;
+//   std::cout << solution << std::endl;
 
   data_out.add_data_vector(solution, "solution");
   
@@ -509,25 +505,9 @@ void Local<dim>::run()
   setup_system();
   assemble_system();
   solve();
-  output_results();
+//   output_results();
+
+  return loc_basis;
 }
 
 
-
-// int main()
-// {
-//   {
-//     Local<2> laplace_problem_2d;
-//     laplace_problem_2d.run();
-//   }
-
-//   // {
-//   //   Local<3> laplace_problem_3d;
-//   //   laplace_problem_3d.run();
-//   // }
-
-
- 
-
-//   return 0;
-// }

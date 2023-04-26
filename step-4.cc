@@ -134,7 +134,7 @@ private:
 
   const double cube_start = 0;
   const double cube_end = 1;
-  int loc_refine_times = 1;
+  int loc_refine_times = 2;
   int global_refine_times = 2;
   int total_refine_times = loc_refine_times + global_refine_times;
 
@@ -217,6 +217,8 @@ void Step4<dim>:: global_grid()
 
   int Nx = (int) pow(2, global_refine_times);     // number of coarse element in one row
   double coarse_side = (cube_end - cube_start) / Nx;
+  int nx = (int) pow(2, loc_refine_times);        // number of fine element in a coarse element in a side
+  double fine_side = coarse_side / nx; 
 
 // get the interior coarse degrees of freedom
   std::vector<Point<dim>> coarse_centers;
@@ -282,7 +284,7 @@ void Step4<dim>:: global_grid()
 
       // call the local cell problem solver with patch_triangulation
       Local<dim> local_cell_problem;
-      local_cell_problem.setUp(patch_triangulation, n_of_loc_basis, POU, coarse_center);
+      local_cell_problem.setUp(patch_triangulation, n_of_loc_basis, POU, coarse_center, fine_side);
       local_cell_problem.run();
 
       break;
@@ -303,6 +305,7 @@ void Step4<dim>::run()
   std::cout << "Solving problem in " << dim << " space dimensions."
             << std::endl;
 
+  buildPOU();
   global_grid();
   // make_grid();
   // setup_system();
