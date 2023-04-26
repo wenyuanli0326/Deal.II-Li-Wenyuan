@@ -308,6 +308,7 @@ void Step4<dim>:: global_grid()
 
 
       // map the loc_basis to Rms !!!
+      // patch_to_global_triangulation_map_temporary.begin()->first->get_triangulation().
 
 
       break;
@@ -479,12 +480,8 @@ void Step4<dim>::run()
 
   buildPOU();
   fine_sol();
-  // global_grid();
-  // make_grid();
-  // setup_system();
-  // assemble_system();
-  // solve();
-  // output_results();
+  global_grid();
+
 }
 
 
