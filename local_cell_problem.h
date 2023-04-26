@@ -78,28 +78,6 @@ using namespace dealii;
 
 
 
-template <int dim>
-class RightHandSide : public Function<dim>
-{
-public:
-  virtual double value(const Point<dim> & p,
-                       const unsigned int component = 0) const override;
-};
-
-template <int dim>
-double RightHandSide<dim>::value(const Point<dim> &/*p*/,
-                                 const unsigned int /*component*/) const
-{
-//   // f = 2 \pi^2 sin(\pi x) sin(\pi y)
-//   double return_value = 2.0 * M_PI;
-//   for (unsigned int i = 0; i < dim; ++i)
-//     return_value *= sin(M_PI * p(i));
-
-  return 0.0;
-}
-
-
-
 
 template <int dim>
 class BoundaryValues : public Function<dim>
@@ -141,7 +119,7 @@ class Local
 {
 public:
   Local();
-  void run();
+  Eigen::MatrixXd run();
   void setUp(Triangulation<dim> &input_triangulation, unsigned int input_n_of_loc_basis,
              Eigen::MatrixXd input_POU, Point<dim> input_coarse_center, 
              double input_fine_side);
@@ -239,8 +217,6 @@ void Local<dim>::assemble_system()
 {
   QGauss<dim> quadrature_formula(fe.degree + 1);
 
-  RightHandSide<dim> right_hand_side;
-
   FEValues<dim> fe_values(fe,
                           quadrature_formula,
                           update_values | update_gradients |
@@ -284,10 +260,11 @@ void Local<dim>::assemble_system()
             }
 
             // can just use cell_rhs(i) += 0;
-            const auto &x_q = fe_values.quadrature_point(q_index);
-            cell_rhs(i) += (fe_values.shape_value(i, q_index) * // phi_i(x_q)
-                            right_hand_side.value(x_q) *        // f(x_q)
-                            fe_values.JxW(q_index));            // dx
+            cell_rhs(i) += 0;
+            // const auto &x_q = fe_values.quadrature_point(q_index);
+            // cell_rhs(i) += (fe_values.shape_value(i, q_index) * // phi_i(x_q)
+            //                 right_hand_side.value(x_q) *        // f(x_q)
+            //                 fe_values.JxW(q_index));            // dx
           }
 
       }
@@ -496,7 +473,7 @@ void Local<dim>::output_results() const
 
 
 template <int dim>
-void Local<dim>::run()
+Eigen::MatrixXd Local<dim>::run()
 {
   std::cout << "Solving problem in " << dim << " space dimensions."
             << std::endl;

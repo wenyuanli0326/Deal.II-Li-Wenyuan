@@ -104,6 +104,30 @@ using namespace dealii;
 
 
 template <int dim>
+class RightHandSide : public Function<dim>
+{
+public:
+  virtual double value(const Point<dim> & p,
+                       const unsigned int component = 0) const override;
+};
+
+template <int dim>
+double RightHandSide<dim>::value(const Point<dim> & p,
+                                 const unsigned int /*component*/) const
+{
+  // f = 2 \pi sin(\pi x) sin(\pi y)
+  double return_value = 2.0 * M_PI;
+  for (unsigned int i = 0; i < dim; ++i)
+    return_value *= sin(M_PI * p(i));
+
+  return return_value;
+}
+
+
+
+
+
+template <int dim>
 class Step4
 {
 public:
@@ -113,6 +137,7 @@ public:
 private:
   void buildPOU();
   void global_grid();
+  void fine_sol();
 
 
   void make_grid();
@@ -125,12 +150,13 @@ private:
   FE_Q<dim>          fe;
   DoFHandler<dim>    dof_handler;
 
-  SparsityPattern      sparsity_pattern;
-  SparseMatrix<double> Alocal;
-  SparseMatrix<double> Slocal;
 
-  // Vector<double> solution;
-  Vector<double> system_rhs;
+  SparsityPattern      sparsity_pattern;
+  SparseMatrix<double> Afine;
+  SparseMatrix<double> Mfine;
+  Vector<double> sol_fine;
+  Vector<double> rhs_fine;
+
 
   const double cube_start = 0;
   const double cube_end = 1;
@@ -143,7 +169,7 @@ private:
 
 
   Eigen::MatrixXd loc_basis;
-
+  Eigen::MatrixXd Rms;
   
   Eigen::MatrixXd POU;
   
@@ -204,17 +230,9 @@ void Step4<dim>:: buildPOU()
 template <int dim>
 void Step4<dim>:: global_grid()
 {
-  GridGenerator::hyper_cube(triangulation, cube_start, cube_end);
-  triangulation.refine_global(total_refine_times);
-
-// print out the global triangulation
-  {
-    std::ofstream out("grid.svg");
-    GridOut       grid_out;
-    grid_out.write_svg(triangulation, out);
-  }
 
 
+// global + loc = total
   int Nx = (int) pow(2, global_refine_times);     // number of coarse element in one row
   double coarse_side = (cube_end - cube_start) / Nx;
   int nx = (int) pow(2, loc_refine_times);        // number of fine element in a coarse element in a side
@@ -239,7 +257,7 @@ void Step4<dim>:: global_grid()
 
 
   for (active_type cell : triangulation.active_cell_iterators()) {
-    std::cout << "cell center: " << cell->center() << std::endl;
+    // std::cout << "cell center: " << cell->center() << std::endl;
     Point<dim> cell_center = cell->center();
     for (unsigned long i = 0; i < coarse_centers.size(); i++ ) {
       Point<dim> coarse_center = coarse_centers[i];
@@ -251,7 +269,8 @@ void Step4<dim>:: global_grid()
     }
   }
 
-  
+  Rms.resize((Nx * nx + 1) * (Nx * nx + 1), n_of_loc_basis * (Nx - 1) * (Nx - 1));
+
   for (unsigned long i = 0; i < coarse_centers.size(); i++)
     {
 
@@ -285,17 +304,170 @@ void Step4<dim>:: global_grid()
       // call the local cell problem solver with patch_triangulation
       Local<dim> local_cell_problem;
       local_cell_problem.setUp(patch_triangulation, n_of_loc_basis, POU, coarse_center, fine_side);
-      local_cell_problem.run();
+      Eigen::MatrixXd loc_basis = local_cell_problem.run();
+
+
+      // map the loc_basis to Rms !!!
+
 
       break;
 
     }
 
+}
 
+
+
+
+
+
+// get fine grid matrices and solutions
+template <int dim>
+void Step4<dim>::fine_sol()
+{
+
+  // make fine grid
+  {
+
+    GridGenerator::hyper_cube(triangulation, cube_start, cube_end);
+    triangulation.refine_global(total_refine_times);
+
+    std::cout << "   Number of active cells: " << triangulation.n_active_cells()
+            << std::endl
+            << "   Total number of cells: " << triangulation.n_cells()
+            << std::endl;
+
+    // print out the total triangulation
+    std::ofstream out("grid.svg");
+    GridOut       grid_out;
+    grid_out.write_svg(triangulation, out);
+  
+  }
+
+  // set up system
+  {
+
+    dof_handler.distribute_dofs(fe);
  
+    std::cout << "   Number of degrees of freedom: " << dof_handler.n_dofs()
+              << std::endl;
+  
+    DynamicSparsityPattern dsp(dof_handler.n_dofs());
+    DoFTools::make_sparsity_pattern(dof_handler, dsp);
+    sparsity_pattern.copy_from(dsp);
+  
+    Afine.reinit(sparsity_pattern);
+    Mfine.reinit(sparsity_pattern);
+  
+    sol_fine.reinit(dof_handler.n_dofs());
+    rhs_fine.reinit(dof_handler.n_dofs());
+
+
+  }
+
+
+  // assemble_system()
+  {
+    QGauss<dim> quadrature_formula(fe.degree + 1);
+  
+    RightHandSide<dim> right_hand_side;
+  
+    FEValues<dim> fe_values(fe,
+                            quadrature_formula,
+                            update_values | update_gradients |
+                              update_quadrature_points | update_JxW_values);
+  
+    const unsigned int dofs_per_cell = fe.n_dofs_per_cell();
+  
+    FullMatrix<double> cell_matrixA(dofs_per_cell, dofs_per_cell);
+    FullMatrix<double> cell_matrixM(dofs_per_cell, dofs_per_cell);
+    Vector<double>     cell_rhs(dofs_per_cell);
+  
+    std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
+  
+    for (const auto &cell : dof_handler.active_cell_iterators())
+      {
+        fe_values.reinit(cell);
+        cell_matrixA = 0;
+        cell_matrixM = 0;
+        cell_rhs    = 0;
+  
+        for (const unsigned int q_index : fe_values.quadrature_point_indices()) {
+
+          const double current_coefficient = kappa(fe_values.quadrature_point(q_index));
+
+          for (const unsigned int i : fe_values.dof_indices())
+            {
+              for (const unsigned int j : fe_values.dof_indices()) {
+                cell_matrixA(i, j) +=
+                  (current_coefficient *              // kappa(x_q)
+                   fe_values.shape_grad(i, q_index) * // grad phi_i(x_q)
+                   fe_values.shape_grad(j, q_index) * // grad phi_j(x_q)
+                   fe_values.JxW(q_index));           // dx
+
+                cell_matrixM(i, j) +=
+                  (fe_values.shape_value(i, q_index) * // phi_i(x_q)
+                   fe_values.shape_value(j, q_index) * // phi_j(x_q)
+                   fe_values.JxW(q_index));           // dx
+                }
+  
+              const auto &x_q = fe_values.quadrature_point(q_index);
+              cell_rhs(i) += (fe_values.shape_value(i, q_index) * // phi_i(x_q)
+                              right_hand_side.value(x_q) *        // f(x_q)
+                              fe_values.JxW(q_index));            // dx
+            }
+          }
+  
+        cell->get_dof_indices(local_dof_indices);
+        for (const unsigned int i : fe_values.dof_indices())
+          {
+            for (const unsigned int j : fe_values.dof_indices()) {
+              Afine.add(local_dof_indices[i],
+                        local_dof_indices[j],
+                        cell_matrixA(i, j));
+              Mfine.add(local_dof_indices[i],
+                        local_dof_indices[j],
+                        cell_matrixM(i, j));
+              }
+  
+            rhs_fine(local_dof_indices[i]) += cell_rhs(i);
+          }
+      }
+  
+    std::map<types::global_dof_index, double> boundary_values;
+    VectorTools::interpolate_boundary_values(dof_handler,
+                                            0,
+                                            BoundaryValues<dim>(),
+                                            boundary_values);
+    MatrixTools::apply_boundary_values(boundary_values,
+                                      Afine,
+                                      sol_fine,
+                                      rhs_fine);
+  }
+
+
+
+
+  // solve()
+  {
+
+    SolverControl            solver_control(1000, 1e-12);
+    SolverCG<Vector<double>> solver(solver_control);
+    solver.solve(Afine, sol_fine, rhs_fine, PreconditionIdentity());
+  
+    std::cout << "   " << solver_control.last_step()
+              << " CG iterations needed to obtain convergence." << std::endl;
+
+  }
+  
+
 
 
 }
+ 
+
+
+
 
 
 
@@ -306,7 +478,8 @@ void Step4<dim>::run()
             << std::endl;
 
   buildPOU();
-  global_grid();
+  fine_sol();
+  // global_grid();
   // make_grid();
   // setup_system();
   // assemble_system();
