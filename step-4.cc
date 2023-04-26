@@ -111,7 +111,9 @@ public:
   void run();
 
 private:
+  void buildPOU();
   void global_grid();
+
 
   void make_grid();
   void setup_system();
@@ -141,6 +143,10 @@ private:
 
 
   Eigen::MatrixXd loc_basis;
+
+  
+  Eigen::MatrixXd POU;
+  
  
 };
 
@@ -155,6 +161,44 @@ Step4<dim>::Step4()
   : fe(1)
   , dof_handler(triangulation)
 {}
+
+
+
+
+// build bilinear basis functions
+template <int dim>
+void Step4<dim>:: buildPOU()
+{
+  int size1 = (int) round(pow(2, loc_refine_times + 1)) + 1;
+  int size2 = (int) round(pow(2, loc_refine_times)) + 1;
+  double side = 1 / pow(2, loc_refine_times - 1);
+
+  POU.resize(size1, size1);
+  Eigen::MatrixXd topleft(size2, size2);
+  Eigen::MatrixXd topright(size2, size2);
+  Eigen::MatrixXd botleft(size2, size2);
+  Eigen::MatrixXd botright(size2, size2);
+  for (int i = 0; i < size2; i++) {
+    for (int j = 0; j < size2; j++) {
+      double y = (size2 - 1 - i) * side;
+      double x = j * side;
+      topleft(i, j) = x * (1.0 - y);
+      topright(i, j) = (1.0 - x) * (1.0 - y);
+      botleft(i, j) = x * y;
+      botright(i, j) = (1.0 - x) * y;
+    }
+  }
+
+  // partion of unity
+
+  POU.block(0, 0, size2, size2) = topleft;
+  POU.block(0, size2, size2, size2 - 1) = topright.rightCols(size2 - 1);
+  POU.block(size2, 0, size2 - 1, size2) = botleft.bottomRows(size2 - 1);
+  POU.bottomRightCorner(size2 - 1, size2 - 1) = botright.bottomRightCorner(size2 - 1, size2 - 1);
+
+}
+
+
 
 
 template <int dim>
@@ -206,8 +250,11 @@ void Step4<dim>:: global_grid()
   }
 
   
-  for (std::vector<active_type> coarse_patch : coarse_patches) 
+  for (int i = 0; i < coarse_centers.size(); i++)
     {
+
+      std::vector<active_type> coarse_patch = coarse_patches[i];
+      Point<dim> coarse_center = coarse_centers[i];
       // why we use iterator_type instead of active_type
       std::map<iterator_type, active_type> patch_to_global_triangulation_map;
       Triangulation<dim> patch_triangulation;
@@ -235,7 +282,7 @@ void Step4<dim>:: global_grid()
 
       // call the local cell problem solver with patch_triangulation
       Local<dim> local_cell_problem;
-      local_cell_problem.setUp(patch_triangulation, n_of_loc_basis);
+      local_cell_problem.setUp(patch_triangulation, n_of_loc_basis, POU, coarse_center);
       local_cell_problem.run();
 
       break;

@@ -142,7 +142,8 @@ class Local
 public:
   Local();
   void run();
-  void setUp(Triangulation<dim> &input_triangulation, unsigned int input_n_of_loc_basis);
+  void setUp(Triangulation<dim> &input_triangulation, unsigned int input_n_of_loc_basis,
+             Eigen::MatrixXd input_POU, Point<dim> input_coarse_center);
 
 private:
   void make_grid();
@@ -162,9 +163,13 @@ private:
   // Vector<double> solution;
   Vector<double> system_rhs;
 
+  Eigen::MatrixXd POU;
+  Point<dim> coarse_center;
+
   unsigned int n_of_loc_basis;
 
   Eigen::MatrixXd loc_basis;
+  
  
 };
 
@@ -172,10 +177,13 @@ private:
 
 // check this !! the &;
 template <int dim>
-void Local<dim>::setUp(Triangulation<dim> &input_triangulation, unsigned int input_n_of_loc_basis)
+void Local<dim>::setUp(Triangulation<dim> &input_triangulation, unsigned int input_n_of_loc_basis,
+                        Eigen::MatrixXd input_POU, Point<dim> input_coarse_center)
 {
     triangulation.copy_triangulation(input_triangulation);
     n_of_loc_basis = input_n_of_loc_basis;
+    POU = input_POU;
+    coarse_center = input_coarse_center;
     
 }
 
@@ -317,12 +325,15 @@ void Local<dim>::solve()
   SparseMatrix<double> Alocaltemp;
   Alocaltemp.reinit(sparsity_pattern);
   Alocaltemp.copy_from(Alocal);
-  
 
-  // try to check if this code make a difference or not, should be no difference
+    // //try to check if this code make a difference or not, should be no difference
+    // //tried, made no difference
 //   Vector<double> system_rhs_temp;
 //   system_rhs_temp.reinit(dof_handler.n_dofs());
 //   system_rhs_temp = system_rhs;
+  
+
+
   
   // this is needed to know the index of the boundary nodes
   // we can also use Functions::ZeroFunction<2>(), for BoundaryValues<dim>()
@@ -332,7 +343,7 @@ void Local<dim>::solve()
                                             boundary_values);
 
   
-  Eigen::MatrixXd Rsnap(Alocaltemp.m(), boundary_values.size());
+  Eigen::MatrixXd Rsnap(Alocal.m(), boundary_values.size());
   int j = 0;    // column index for Rsnap
   for (auto keyValuePair = boundary_values.begin(); keyValuePair != boundary_values.end(); keyValuePair++) {
     keyValuePair->second = 1.0;
@@ -394,9 +405,6 @@ void Local<dim>::solve()
   Asnap = (Asnap + Asnap.transpose()) / 2;
   Ssnap = (Ssnap + Ssnap.transpose()) / 2;
 
-  // // // Eigen::GeneralizedEigenSolver<dealii::FullMatrix<double>> ges;
-  // // Eigen::GeneralizedEigenSolver<Eigen::MatrixXf> ges;
-
 
   Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXd> ges;
 
@@ -405,59 +413,57 @@ void Local<dim>::solve()
 
   // std::cout << "The (complex) numerators of the generalzied eigenvalues are: " << ges.alphas().transpose() << std::endl;
   // std::cout << "The (real) denominatore of the generalzied eigenvalues are: " << ges.betas().transpose() << std::endl;
-  std::cout << "The (complex) generalzied eigenvalues are (alphas./beta): " << ges.eigenvalues().transpose() << std::endl;
+//   std::cout << "The (complex) generalzied eigenvalues are (alphas./beta): " << ges.eigenvalues().transpose() << std::endl;
   // std::cout << "The (complex) generalzied eigenvectors are: " << ges.eigenvectors().transpose() << std::endl;
 
   // // remember to modify the matrix Slocal
 
 
-  // Eigen::MatrixXd loc_basis(Rsnap.m(), n_of_loc_basis);
-  Eigen::MatrixXd eigenvectors = ges.eigenvectors();
   Eigen::MatrixXd loc_basis0;
-  loc_basis0 = Rsnap * eigenvectors.leftCols(n_of_loc_basis);
-
-  std::cout << "to current step" << std::endl;
+  loc_basis0 = Rsnap * ges.eigenvectors().leftCols(n_of_loc_basis);
 
 
 
-//   // build bilinear basis functions
+  // build bilinear basis functions
+  int loc_refine_times = 2;
+  int n_of_points = (int) ((int) round(pow(2, loc_refine_times - 1))) + 1;
+  double side = 1 / pow(2, loc_refine_times - 1);
+  Eigen::MatrixXd POU((int)pow(2, loc_refine_times) + 1, (int)pow(2, loc_refine_times) + 1);
+  Eigen::MatrixXd topleft(n_of_points, n_of_points);
+  Eigen::MatrixXd topright(n_of_points, n_of_points);
+  Eigen::MatrixXd botleft(n_of_points, n_of_points);
+  Eigen::MatrixXd botright(n_of_points, n_of_points);
+  for (int i = 0; i < n_of_points; i++) {
+    for (int j = 0; j < n_of_points; j++) {
+      double y = (n_of_points - 1 - i) * side;
+      double x = j * side;
+      topleft(i, j) = x * (1.0 - y);
+      topright(i, j) = (1.0 - x) * (1.0 - y);
+      botleft(i, j) = x * y;
+      botright(i, j) = (1.0 - x) * y;
+    }
+  }
 
-//   int n_of_points = (int) ((int) round(pow(2, loc_refine_times - 1))) + 1;
-//   double side = 1 / pow(2, loc_refine_times - 1);
-//   Eigen::MatrixXd POU((int)pow(2, loc_refine_times) + 1, (int)pow(2, loc_refine_times) + 1);
-//   Eigen::MatrixXd topleft(n_of_points, n_of_points);
-//   Eigen::MatrixXd topright(n_of_points, n_of_points);
-//   Eigen::MatrixXd botleft(n_of_points, n_of_points);
-//   Eigen::MatrixXd botright(n_of_points, n_of_points);
-//   for (int i = 0; i < n_of_points; i++) {
-//     for (int j = 0; j < n_of_points; j++) {
-//       double y = (n_of_points - 1 - i) * side;
-//       double x = j * side;
-//       topleft(i, j) = x * (1.0 - y);
-//       topright(i, j) = (1.0 - x) * (1.0 - y);
-//       botleft(i, j) = x * y;
-//       botright(i, j) = (1.0 - x) * y;
-//     }
-//   }
+  // partion of unity
 
-//   // partion of unity
+  POU.block(0, 0, n_of_points, n_of_points) = topleft;
+  POU.block(0, n_of_points, n_of_points, n_of_points - 1) = topright.rightCols(n_of_points - 1);
+  POU.block(n_of_points, 0, n_of_points - 1, n_of_points) = botleft.bottomRows(n_of_points - 1);
+  POU.bottomRightCorner(n_of_points - 1, n_of_points - 1) = botright.bottomRightCorner(n_of_points - 1, n_of_points - 1);
 
-//   POU.block(0, 0, n_of_points, n_of_points) = topleft;
-//   POU.block(0, n_of_points, n_of_points, n_of_points - 1) = topright.rightCols(n_of_points - 1);
-//   POU.block(n_of_points, 0, n_of_points - 1, n_of_points) = botleft.bottomRows(n_of_points - 1);
-//   POU.bottomRightCorner(n_of_points - 1, n_of_points - 1) = botright.bottomRightCorner(n_of_points - 1, n_of_points - 1);
+  
+
+  MappingQ<dim> mapping(1);
+  std::map<types::global_dof_index, Point<dim>> support_points;
+  auto fe_collection = dof_handler.get_fe_collection();
+
+  
+  DoFTools::map_dofs_to_support_points(mapping, dof_handler, support_points);
 
 
+  Eigen::VectorXd POUvector(POU.rows() * POU.cols());
+  
 
-//   MappingQ<dim> mapping(1);
-//   std::map<types::global_dof_index, Point<dim>> support_points;
-//   auto fe_collection = dof_handler.get_fe_collection();
-
-
-//   DoFTools::map_dofs_to_support_points(mapping, dof_handler, support_points);
-
-
-//   Eigen::VectorXd POUvector(POU.rows() * POU.cols());
 //   int i = 0;
 //   for (auto support_point : support_points) {
 //     Point<dim> coordinates = support_point.second;
@@ -466,7 +472,7 @@ void Local<dim>::solve()
 //     POUvector(i) = POU(POU.rows() - 1 - ny, nx);
 //     i += 1; 
 //   }
-
+//   std::cout << " check point 4 " << std::endl;
 //   loc_basis = loc_basis0.array().colwise() * POUvector.array();
     loc_basis = loc_basis0;
 
