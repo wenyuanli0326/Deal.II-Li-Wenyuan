@@ -87,15 +87,15 @@ public:
 };
 
 template <int dim>
-double RightHandSide<dim>::value(const Point<dim> &p,
+double RightHandSide<dim>::value(const Point<dim> &/*p*/,
                                  const unsigned int /*component*/) const
 {
-  // f = 2 \pi^2 sin(\pi x) sin(\pi y)
-  double return_value = 2.0 * M_PI;
-  for (unsigned int i = 0; i < dim; ++i)
-    return_value *= sin(M_PI * p(i));
+//   // f = 2 \pi^2 sin(\pi x) sin(\pi y)
+//   double return_value = 2.0 * M_PI;
+//   for (unsigned int i = 0; i < dim; ++i)
+//     return_value *= sin(M_PI * p(i));
 
-  return return_value;
+  return 0.0;
 }
 
 
@@ -239,7 +239,7 @@ void Local<dim>::assemble_system()
   FullMatrix<double> cell_matrixA(dofs_per_cell, dofs_per_cell);
   FullMatrix<double> cell_matrixS(dofs_per_cell, dofs_per_cell);
 
-  Vector<double>     cell_rhs(dofs_per_cell);  // rhs is not needed for the cell problem
+  Vector<double>     cell_rhs(dofs_per_cell);  // rhs is 0 for the cell problem
 
   std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
 
@@ -271,6 +271,7 @@ void Local<dim>::assemble_system()
 
             }
 
+            // can just use cell_rhs(i) += 0;
             const auto &x_q = fe_values.quadrature_point(q_index);
             cell_rhs(i) += (fe_values.shape_value(i, q_index) * // phi_i(x_q)
                             right_hand_side.value(x_q) *        // f(x_q)
@@ -301,7 +302,6 @@ void Local<dim>::assemble_system()
 
 
 
-
 }
 
 
@@ -312,11 +312,20 @@ void Local<dim>::solve()
   
 
   std::map<types::global_dof_index, double> boundary_values;
+
+    // try to put this inside the for loop;
   SparseMatrix<double> Alocaltemp;
   Alocaltemp.reinit(sparsity_pattern);
   Alocaltemp.copy_from(Alocal);
   
+
+  // try to check if this code make a difference or not, should be no difference
+//   Vector<double> system_rhs_temp;
+//   system_rhs_temp.reinit(dof_handler.n_dofs());
+//   system_rhs_temp = system_rhs;
+  
   // this is needed to know the index of the boundary nodes
+  // we can also use Functions::ZeroFunction<2>(), for BoundaryValues<dim>()
   VectorTools::interpolate_boundary_values(dof_handler,
                                             0,
                                             BoundaryValues<dim>(),
@@ -324,7 +333,7 @@ void Local<dim>::solve()
 
   
   Eigen::MatrixXd Rsnap(Alocaltemp.m(), boundary_values.size());
-  int j = 0;
+  int j = 0;    // column index for Rsnap
   for (auto keyValuePair = boundary_values.begin(); keyValuePair != boundary_values.end(); keyValuePair++) {
     keyValuePair->second = 1.0;
     for (auto otherPair = boundary_values.begin(); otherPair != boundary_values.end(); otherPair++) {
@@ -358,15 +367,8 @@ void Local<dim>::solve()
     }
     j++;
 
-  std::cout << "to current step0" << std::endl;
   }
 
-
-
-
-
-
-  std::cout << "to current step1" << std::endl;
 
   FullMatrix<double> AlocalDense(Alocal.m(), Alocal.n());
   AlocalDense.copy_from(Alocal);	
@@ -388,12 +390,9 @@ void Local<dim>::solve()
   Eigen::MatrixXd Ssnap = Rsnap.transpose() * Slocal0 * Rsnap;
 
   // to ensure the matrices are symmetric
+  // they are symmetric originally, only some machine error difference
   Asnap = (Asnap + Asnap.transpose()) / 2;
   Ssnap = (Ssnap + Ssnap.transpose()) / 2;
-
-  // get patch around cell 
-  // build trangulation from patch
-  // 
 
   // // // Eigen::GeneralizedEigenSolver<dealii::FullMatrix<double>> ges;
   // // Eigen::GeneralizedEigenSolver<Eigen::MatrixXf> ges;
