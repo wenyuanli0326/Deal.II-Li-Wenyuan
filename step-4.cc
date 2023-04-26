@@ -134,7 +134,7 @@ private:
 
   const double cube_start = 0;
   const double cube_end = 1;
-  int loc_refine_times = 2;
+  int loc_refine_times = 1;
   int global_refine_times = 2;
   int total_refine_times = loc_refine_times + global_refine_times;
 
@@ -250,7 +250,7 @@ void Step4<dim>:: global_grid()
   }
 
   
-  for (int i = 0; i < coarse_centers.size(); i++)
+  for (unsigned long i = 0; i < coarse_centers.size(); i++)
     {
 
       std::vector<active_type> coarse_patch = coarse_patches[i];

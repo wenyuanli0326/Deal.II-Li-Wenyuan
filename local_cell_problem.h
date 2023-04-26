@@ -342,6 +342,14 @@ void Local<dim>::solve()
                                             BoundaryValues<dim>(),
                                             boundary_values);
 
+
+  for (auto entry : boundary_values) {
+    std::cout << " the first entry (index) is: " << entry.first
+              << std::endl 
+              << " the second entry (value) is: " << entry.second
+              << std::endl;
+    
+  }
   
   Eigen::MatrixXd Rsnap(Alocal.m(), boundary_values.size());
   int j = 0;    // column index for Rsnap
@@ -422,35 +430,6 @@ void Local<dim>::solve()
   Eigen::MatrixXd loc_basis0;
   loc_basis0 = Rsnap * ges.eigenvectors().leftCols(n_of_loc_basis);
 
-
-
-  // build bilinear basis functions
-  int loc_refine_times = 2;
-  int n_of_points = (int) ((int) round(pow(2, loc_refine_times - 1))) + 1;
-  double side = 1 / pow(2, loc_refine_times - 1);
-  Eigen::MatrixXd POU((int)pow(2, loc_refine_times) + 1, (int)pow(2, loc_refine_times) + 1);
-  Eigen::MatrixXd topleft(n_of_points, n_of_points);
-  Eigen::MatrixXd topright(n_of_points, n_of_points);
-  Eigen::MatrixXd botleft(n_of_points, n_of_points);
-  Eigen::MatrixXd botright(n_of_points, n_of_points);
-  for (int i = 0; i < n_of_points; i++) {
-    for (int j = 0; j < n_of_points; j++) {
-      double y = (n_of_points - 1 - i) * side;
-      double x = j * side;
-      topleft(i, j) = x * (1.0 - y);
-      topright(i, j) = (1.0 - x) * (1.0 - y);
-      botleft(i, j) = x * y;
-      botright(i, j) = (1.0 - x) * y;
-    }
-  }
-
-  // partion of unity
-
-  POU.block(0, 0, n_of_points, n_of_points) = topleft;
-  POU.block(0, n_of_points, n_of_points, n_of_points - 1) = topright.rightCols(n_of_points - 1);
-  POU.block(n_of_points, 0, n_of_points - 1, n_of_points) = botleft.bottomRows(n_of_points - 1);
-  POU.bottomRightCorner(n_of_points - 1, n_of_points - 1) = botright.bottomRightCorner(n_of_points - 1, n_of_points - 1);
-
   
 
   MappingQ<dim> mapping(1);
@@ -463,17 +442,20 @@ void Local<dim>::solve()
 
   Eigen::VectorXd POUvector(POU.rows() * POU.cols());
   
-
+// does the order in the support points match the order in dof numbering?
+// yes, they match. I checked the support points and the boundary_values.
 //   int i = 0;
-//   for (auto support_point : support_points) {
-//     Point<dim> coordinates = support_point.second;
-//     int nx = (int) round(coordinates(0) / side);
-//     int ny = (int) round(coordinates(1) / side);
-//     POUvector(i) = POU(POU.rows() - 1 - ny, nx);
-//     i += 1; 
-//   }
-//   std::cout << " check point 4 " << std::endl;
-//   loc_basis = loc_basis0.array().colwise() * POUvector.array();
+  for (auto support_point : support_points) {
+    Point<dim> coordinates = support_point.second;
+    // int nx = (int) round(coordinates(0) / side);
+    // int ny = (int) round(coordinates(1) / side);
+    // POUvector(i) = POU(POU.rows() - 1 - ny, nx);
+    // i += 1; 
+    std::cout << "support_point.first = " << support_point.first << std::endl;
+    std::cout << "coordinates = " << coordinates << std::endl;
+  }
+  std::cout << " check point 4 " << std::endl;
+  loc_basis = loc_basis0.array().colwise() * POUvector.array();
     loc_basis = loc_basis0;
 
 }
