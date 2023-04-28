@@ -124,6 +124,8 @@ public:
              Eigen::MatrixXd input_POU, Point<dim> input_coarse_center, 
              double input_fine_side);
 
+  const DoFHandler<dim> &get_dof_handler() const { return dof_handler; }
+
 private:
   void make_grid();
   void setup_system();

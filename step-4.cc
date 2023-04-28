@@ -276,29 +276,11 @@ void Step4<dim>:: global_grid()
 
       std::vector<active_type> coarse_patch = coarse_patches[i];
       Point<dim> coarse_center = coarse_centers[i];
-      // why we use iterator_type instead of active_type
-      std::map<iterator_type, active_type> patch_to_global_triangulation_map;
+      std::map<active_type, active_type> patch_to_global_triangulation_map;
       Triangulation<dim> patch_triangulation;
 
-      std::map<active_type, active_type> patch_to_global_triangulation_map_temporary;
-
       GridTools::build_triangulation_from_patch<Triangulation<2>>(
-        coarse_patch, patch_triangulation, patch_to_global_triangulation_map_temporary);
-
-      // // do we need this?
-      // for (const auto &it : patch_to_global_triangulation_map_temporary)
-      // {
-      //   patch_to_global_triangulation_map[it.first] = it.second;
-      //   std::cout << it.first << " " << it.second << std::endl;
-      // }
-    
-      // // for checking the patches
-      // {
-      //   std::ofstream out("patch" + std::to_string(i) + ".svg");
-      //   GridOut       grid_out;
-      //   grid_out.write_svg(patch_triangulation, out);
-      // }
-      // i++;
+        coarse_patch, patch_triangulation, patch_to_global_triangulation_map);
 
 
       // call the local cell problem solver with patch_triangulation
@@ -306,12 +288,28 @@ void Step4<dim>:: global_grid()
       local_cell_problem.setUp(patch_triangulation, n_of_loc_basis, POU, coarse_center, fine_side);
       Eigen::MatrixXd loc_basis = local_cell_problem.run();
 
+      Vector<double> basis_function;
+      basis_function.reinit(dof_handler.n_dofs());
 
-      // map the loc_basis to Rms !!!
-      // patch_to_global_triangulation_map_temporary.begin()->first->get_triangulation().
+      Vector<double> temp_values;
+      temp_values.reinit(dof_handler.get_fe().n_dofs_per_cell());
 
+      const auto & patch_dof_handler = local_cell_problem.get_dof_handler();
 
-      
+      for(auto pair : patch_to_global_triangulation_map) {
+
+        const typename DoFHandler<dim>::cell_iterator patch_cell(
+            &pair.first->get_triangulation(), pair.first->level(),
+            pair.first->index(), &patch_dof_handler);
+
+        const typename DoFHandler<dim>::cell_iterator global_cell(
+            &pair.second->get_triangulation(), pair.second->level(),
+            pair.second->index(), &dof_handler);
+
+        // FIXME
+//         patch_cell->get_dof_values(loc_basis[0], temp_values);
+        global_cell->set_dof_values(basis_function, temp_values);
+      }
 
     }
 
