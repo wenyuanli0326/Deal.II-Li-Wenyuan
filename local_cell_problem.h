@@ -182,10 +182,10 @@ template <int dim>
 void Local<dim>::make_grid()
 {
 
-  std::cout << "   Number of active cells: " << triangulation.n_active_cells()
-            << std::endl
-            << "   Total number of cells: " << triangulation.n_cells()
-            << std::endl;
+  // std::cout << "   Number of active cells: " << triangulation.n_active_cells()
+  //           << std::endl
+  //           << "   Total number of cells: " << triangulation.n_cells()
+  //           << std::endl;
 
 }
 
@@ -195,8 +195,8 @@ void Local<dim>::setup_system()
 {
   dof_handler.distribute_dofs(fe);
 
-  std::cout << "   Number of degrees of freedom: " << dof_handler.n_dofs()
-            << std::endl;
+  // std::cout << "   Number of degrees of freedom: " << dof_handler.n_dofs()
+  //           << std::endl;
 
   DynamicSparsityPattern dsp(dof_handler.n_dofs());
   DoFTools::make_sparsity_pattern(dof_handler, dsp);
@@ -343,14 +343,14 @@ void Local<dim>::solve()
                                      solution,
                                      system_rhs, false);
 
-    SolverControl            solver_control(1000, 1e-12);
+    SolverControl            solver_control(2000, 1e-12);
     SolverCG<Vector<double>> solver(solver_control);
 
 
     solver.solve(Alocaltemp, solution, system_rhs, PreconditionIdentity());
 
-    std::cout << "   " << solver_control.last_step()
-            << " CG iterations needed to obtain convergence." << std::endl;
+    // std::cout << "   " << solver_control.last_step()
+    //         << " CG iterations needed to obtain convergence." << std::endl;
 
 
 
@@ -475,8 +475,7 @@ void Local<dim>::output_results() const
 template <int dim>
 Eigen::MatrixXd Local<dim>::run()
 {
-  std::cout << "Solving problem in " << dim << " space dimensions."
-            << std::endl;
+
 
   make_grid();
   setup_system();

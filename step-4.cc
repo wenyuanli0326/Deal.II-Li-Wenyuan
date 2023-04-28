@@ -161,10 +161,10 @@ private:
   const double cube_start = 0;
   const double cube_end = 1;
   int loc_refine_times = 2;
-  int global_refine_times = 2;
+  int global_refine_times = 3;
   int total_refine_times = loc_refine_times + global_refine_times;
 
-  unsigned int n_of_loc_basis = 5;
+  unsigned int n_of_loc_basis = 1;
 
 
 
@@ -244,7 +244,7 @@ void Step4<dim>:: global_grid()
     for (int j = 1; j < Nx; j++) {
       Point<dim> coarse_center(i * coarse_side, j * coarse_side);
       coarse_centers.push_back(coarse_center);
-      std::cout << "coarse center: " << coarse_center << std::endl;
+      // std::cout << "coarse center: " << coarse_center << std::endl;
     }
   }
 
@@ -311,7 +311,7 @@ void Step4<dim>:: global_grid()
       // patch_to_global_triangulation_map_temporary.begin()->first->get_triangulation().
 
 
-      break;
+      
 
     }
 
@@ -452,7 +452,7 @@ void Step4<dim>::fine_sol()
   // solve()
   {
 
-    SolverControl            solver_control(1000, 1e-12);
+    SolverControl            solver_control(5000, 1e-12);
     SolverCG<Vector<double>> solver(solver_control);
     solver.solve(Afine, sol_fine, rhs_fine, PreconditionIdentity());
   
