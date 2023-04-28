@@ -288,6 +288,13 @@ void Step4<dim>:: global_grid()
       local_cell_problem.setUp(patch_triangulation, n_of_loc_basis, POU, coarse_center, fine_side);
       Eigen::MatrixXd loc_basis = local_cell_problem.run();
 
+      Vector<double> loc_basis1;
+      loc_basis1.reinit(loc_basis.rows());
+      for (int i = 0; i < loc_basis.rows(); i++) {
+        loc_basis1[i] = loc_basis(i, 0);
+      }
+
+
       Vector<double> basis_function;
       basis_function.reinit(dof_handler.n_dofs());
 
@@ -307,8 +314,8 @@ void Step4<dim>:: global_grid()
             pair.second->index(), &dof_handler);
 
         // FIXME
-//         patch_cell->get_dof_values(loc_basis[0], temp_values);
-        global_cell->set_dof_values(basis_function, temp_values);
+        // patch_cell->get_dof_values(loc_basis1, temp_values);
+        // global_cell->set_dof_values(basis_function, temp_values);
       }
 
     }
