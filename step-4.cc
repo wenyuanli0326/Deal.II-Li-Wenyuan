@@ -317,7 +317,7 @@ void Step4<dim>:: global_grid()
 
         // FIXME
         patch_cell->get_dof_values(loc_basis1, temp_values);
-        global_cell->set_dof_values(basis_function, temp_values);
+        global_cell->set_dof_values(temp_values, basis_function);
       }
 
     }
