@@ -124,6 +124,7 @@ public:
              Eigen::MatrixXd input_POU, Point<dim> input_coarse_center, 
              double input_fine_side);
 
+  const Triangulation<dim> &get_triangulation() const { return  triangulation; }
   const DoFHandler<dim> &get_dof_handler() const { return dof_handler; }
 
 private:
@@ -168,7 +169,6 @@ void Local<dim>::setUp(Triangulation<dim> &input_triangulation, unsigned int inp
     POU = input_POU;
     coarse_center = input_coarse_center;
     fine_side = input_fine_side;
-    
 }
 
 

@@ -301,12 +301,14 @@ void Step4<dim>:: global_grid()
       Vector<double> temp_values;
       temp_values.reinit(dof_handler.get_fe().n_dofs_per_cell());
 
-      const auto & patch_dof_handler = local_cell_problem.get_dof_handler();
+      const auto &patch_dof_handler = local_cell_problem.get_dof_handler();
+      const auto &patch_triangulation_wrong =
+          local_cell_problem.get_triangulation();
 
       for(auto pair : patch_to_global_triangulation_map) {
 
         const typename DoFHandler<dim>::cell_iterator patch_cell(
-            &pair.first->get_triangulation(), pair.first->level(),
+            &patch_triangulation_wrong, pair.first->level(),
             pair.first->index(), &patch_dof_handler);
 
         const typename DoFHandler<dim>::cell_iterator global_cell(
@@ -314,8 +316,8 @@ void Step4<dim>:: global_grid()
             pair.second->index(), &dof_handler);
 
         // FIXME
-        // patch_cell->get_dof_values(loc_basis1, temp_values);
-        // global_cell->set_dof_values(basis_function, temp_values);
+        patch_cell->get_dof_values(loc_basis1, temp_values);
+        global_cell->set_dof_values(basis_function, temp_values);
       }
 
     }
