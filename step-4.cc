@@ -294,28 +294,42 @@ void Step4<dim>:: global_grid()
         loc_basis1[i] = loc_basis(i, 0);
       }
 
+      // Vector<double> loc_basis1;
+      // loc_basis1.reinit(dof_handler.get_fe().n_dofs_per_cell());
+      // for (unsigned int i = 0; i < loc_basis1.size(); i++) {
+      //   loc_basis1[i] = 0;
+      // }
 
       Vector<double> basis_function;
       basis_function.reinit(dof_handler.n_dofs());
 
       Vector<double> temp_values;
       temp_values.reinit(dof_handler.get_fe().n_dofs_per_cell());
-
+      // temp_values.reinit(loc_basis.rows());
+      
       const auto & patch_dof_handler = local_cell_problem.get_dof_handler();
 
       for(auto pair : patch_to_global_triangulation_map) {
 
+        // const typename DoFHandler<dim>::cell_iterator patch_cell(
+        //     &pair.first->get_triangulation(), pair.first->level(),
+        //     pair.first->index(), &patch_dof_handler);
+
+        // const typename DoFHandler<dim>::cell_iterator global_cell(
+        //     &pair.second->get_triangulation(), pair.second->level(),
+        //     pair.second->index(), &dof_handler);
+
         const typename DoFHandler<dim>::cell_iterator patch_cell(
-            &pair.first->get_triangulation(), pair.first->level(),
+            &patch_dof_handler.get_triangulation(), pair.first->level(),
             pair.first->index(), &patch_dof_handler);
 
         const typename DoFHandler<dim>::cell_iterator global_cell(
-            &pair.second->get_triangulation(), pair.second->level(),
+            &dof_handler.get_triangulation(), pair.second->level(),
             pair.second->index(), &dof_handler);
 
         // FIXME
-        // patch_cell->get_dof_values(loc_basis1, temp_values);
-        // global_cell->set_dof_values(basis_function, temp_values);
+        patch_cell->get_dof_values(loc_basis1, temp_values);
+        global_cell->set_dof_values(basis_function, temp_values);
       }
 
     }
