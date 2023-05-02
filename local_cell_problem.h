@@ -465,7 +465,7 @@ void Local<dim>::output_results() const
 
   data_out.build_patches();
 
-  std::ofstream output(dim == 2 ? "solution-2d.vtk" : "solution-3d.vtk");
+  std::ofstream output("solution-basis.vtk");
 
   data_out.write_vtk(output);
 
@@ -488,7 +488,7 @@ Eigen::MatrixXd Local<dim>::run()
   setup_system();
   assemble_system();
   solve();
-//   output_results();
+  output_results();
 
   return loc_basis;
 }

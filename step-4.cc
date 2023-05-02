@@ -57,6 +57,7 @@
 #include <deal.II/lac/petsc_sparse_matrix.h>
 #include <deal.II/lac/petsc_vector.h>
 #include <deal.II/lac/slepc_solver.h>
+#include <string>
 #include <vector>
 
 
@@ -140,13 +141,8 @@ private:
   void global_grid();
   void fine_sol();
   void coarse_sol();
-
-
-  void make_grid();
-  void setup_system();
-  void assemble_system();
-  void solve();
   void output_results() const;
+  
 
   Triangulation<dim> triangulation;
   FE_Q<dim>          fe;
@@ -164,11 +160,11 @@ private:
 
   const double cube_start = 0;
   const double cube_end = 1;
-  int loc_refine_times = 2;
+  int loc_refine_times = 3;
   int global_refine_times = 3;
   int total_refine_times = loc_refine_times + global_refine_times;
 
-  unsigned int n_of_loc_basis = 5;
+  unsigned int n_of_loc_basis = 1;
 
 
 // global + loc = total
@@ -181,8 +177,8 @@ private:
   int coarse_size = (Nx - 1) * (Nx - 1) * n_of_loc_basis;
   int fine_size = (Nx * nx + 1) * (Nx * nx + 1);
 
-  FullMatrix<double> Rms0;
   
+  FullMatrix<double> Rms1;
   
   Eigen::MatrixXd loc_basis;
   Eigen::MatrixXd Rms;
@@ -346,9 +342,39 @@ void Step4<dim>:: global_grid()
         }
         Rms.col(Rms_i) = basis_function_temp;
         // std::cout << Rms.cols() << " " << Rms_i << std::endl;
+        
+        
+
+        // check basis functions
+
+        Vector<double> basis(Rms.rows());
+       
+        for (unsigned int j = 0; j < Rms.rows(); j++) {
+          basis[j] = Rms(j, Rms_i);
+        }
+
+        DataOut<dim> data_out;
+
+        data_out.attach_dof_handler(dof_handler);
+
+        data_out.add_data_vector(basis, "basis");
+
+        data_out.build_patches();
+
+        std::ofstream out("basis.vtk");
+
+        data_out.write_vtk(out);
+
+
+
         Rms_i += 1;
-          
+        
       }
+
+
+        if (Rms_i == 20) {
+          break;
+        }
 
     }
 
@@ -508,12 +534,12 @@ void Step4<dim>::fine_sol()
 
 
 
-// get coarse grid matrices and solutions
+// get coarse grid matrices and solutions and calculate error
 template <int dim>
 void Step4<dim>::coarse_sol()
 {
   // convert Rms to dealii type FullMatrix
-  FullMatrix<double> Rms1(Rms.rows(), Rms.cols());
+  Rms1.reinit(Rms.rows(), Rms.cols());
   for (int i = 0; i < Rms.rows(); i++) {
     for (int j = 0; j < Rms.cols(); j++) {
       Rms1(i, j) = Rms(i, j);
@@ -578,6 +604,76 @@ void Step4<dim>::coarse_sol()
 
 
 
+
+template <int dim>
+void Step4<dim>::output_results() const 
+{
+  DataOut<dim> data_out;
+
+  data_out.attach_dof_handler(dof_handler);
+
+  data_out.add_data_vector(sol_fine, "sol_fine");
+  
+  data_out.build_patches();
+
+  std::ofstream out("sol_fine.vtk");
+
+  data_out.write_vtk(out);
+
+
+
+  DataOut<dim> data_out1;
+
+  data_out1.attach_dof_handler(dof_handler);
+
+  data_out1.add_data_vector(sol_coarse, "sol_coarse");
+  
+  data_out1.build_patches();
+
+  std::ofstream out1("sol_coarse.vtk");
+
+  data_out1.write_vtk(out1);
+
+  // std::ofstream output(dim == 2 ? "solution-2d.vtk" : "solution-3d.vtk");
+
+  // data_out.write_vtk(output);
+
+  // DataOut<dim> data_out;
+  // data_out.add_data_vector(POU.reshaped(dof_handler.n_dofs(),1), "solution");
+  // std::ofstream output(dim == 2 ? "solution-2d.vtk" : "solution-3d.vtk");
+  // data_out.write_vtk(output);
+
+
+// // check basis functions
+//   for (unsigned int i = 0; i < Rms1.n_cols(); i++) {
+
+//     Vector<double> basis(Rms1.n_rows());
+//     for (unsigned int j = 0; j < Rms1.n_rows(); j++) {
+//       basis[j] = Rms1(j, i);
+//     }
+
+//     DataOut<dim> data_out;
+
+//     data_out.attach_dof_handler(dof_handler);
+
+//     data_out.add_data_vector(basis, "basis");
+    
+//     data_out.build_patches();
+
+//     std::ofstream out("basis" + std::to_string(i) + ".vtk");
+
+//     data_out.write_vtk(out);
+//   }
+
+
+}
+
+
+
+
+
+
+
 template <int dim>
 void Step4<dim>::run()
 {
@@ -588,7 +684,8 @@ void Step4<dim>::run()
   fine_sol();
   global_grid();
   coarse_sol();
-
+  output_results();
+  
 
 }
 
