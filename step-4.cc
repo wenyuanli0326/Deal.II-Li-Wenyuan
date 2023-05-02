@@ -48,6 +48,7 @@
 #include <iostream>
 
 #include <deal.II/base/logstream.h>
+#include <deal.II/lac/vector_memory.h>
 #include <ostream>
 
 
@@ -138,6 +139,7 @@ private:
   void buildPOU();
   void global_grid();
   void fine_sol();
+  void coarse_sol();
 
 
   void make_grid();
@@ -157,6 +159,8 @@ private:
   Vector<double> sol_fine;
   Vector<double> rhs_fine;
 
+  Vector<double> sol_coarse;
+
 
   const double cube_start = 0;
   const double cube_end = 1;
@@ -164,10 +168,22 @@ private:
   int global_refine_times = 3;
   int total_refine_times = loc_refine_times + global_refine_times;
 
-  unsigned int n_of_loc_basis = 1;
+  unsigned int n_of_loc_basis = 5;
 
 
+// global + loc = total
+  int Nx = (int) pow(2, global_refine_times);     // number of coarse element in one row
+  double coarse_side = (cube_end - cube_start) / Nx;
+  int nx = (int) pow(2, loc_refine_times);        // number of fine element in a coarse element in a side
+  double fine_side = coarse_side / nx; 
 
+
+  int coarse_size = (Nx - 1) * (Nx - 1) * n_of_loc_basis;
+  int fine_size = (Nx * nx + 1) * (Nx * nx + 1);
+
+  FullMatrix<double> Rms0;
+  
+  
   Eigen::MatrixXd loc_basis;
   Eigen::MatrixXd Rms;
   
@@ -232,11 +248,6 @@ void Step4<dim>:: global_grid()
 {
 
 
-// global + loc = total
-  int Nx = (int) pow(2, global_refine_times);     // number of coarse element in one row
-  double coarse_side = (cube_end - cube_start) / Nx;
-  int nx = (int) pow(2, loc_refine_times);        // number of fine element in a coarse element in a side
-  double fine_side = coarse_side / nx; 
 
 // get the interior coarse degrees of freedom
   std::vector<Point<dim>> coarse_centers;
@@ -270,6 +281,7 @@ void Step4<dim>:: global_grid()
   }
 
   Rms.resize((Nx * nx + 1) * (Nx * nx + 1), n_of_loc_basis * (Nx - 1) * (Nx - 1));
+  int Rms_i = 0;
 
   for (unsigned long i = 0; i < coarse_centers.size(); i++)
     {
@@ -286,56 +298,63 @@ void Step4<dim>:: global_grid()
       // call the local cell problem solver with patch_triangulation
       Local<dim> local_cell_problem;
       local_cell_problem.setUp(patch_triangulation, n_of_loc_basis, POU, coarse_center, fine_side);
-      Eigen::MatrixXd loc_basis = local_cell_problem.run();
+      Eigen::MatrixXd loc_basis_return = local_cell_problem.run();
 
-      Vector<double> loc_basis1;
-      loc_basis1.reinit(loc_basis.rows());
-      for (int i = 0; i < loc_basis.rows(); i++) {
-        loc_basis1[i] = loc_basis(i, 0);
+
+      std::vector<Vector<double>> loc_basis;
+      for (int j = 0; j < loc_basis_return.cols(); j++) {
+        Vector<double> loc_basis_col(loc_basis_return.rows());
+
+        for (int i = 0; i < loc_basis_return.rows(); i++) {
+          loc_basis_col(i) = loc_basis_return(i, j);
+        }
+        loc_basis.push_back(loc_basis_col);
       }
 
-      // Vector<double> loc_basis1;
-      // loc_basis1.reinit(dof_handler.get_fe().n_dofs_per_cell());
-      // for (unsigned int i = 0; i < loc_basis1.size(); i++) {
-      //   loc_basis1[i] = 0;
-      // }
+      for (unsigned int i = 0; i < n_of_loc_basis; i++) {
 
-      Vector<double> basis_function;
-      basis_function.reinit(dof_handler.n_dofs());
+        Vector<double> basis_function;
+        basis_function.reinit(dof_handler.n_dofs());
 
-      Vector<double> temp_values;
-      temp_values.reinit(dof_handler.get_fe().n_dofs_per_cell());
+        Vector<double> temp_values;
+        temp_values.reinit(dof_handler.get_fe().n_dofs_per_cell());
 
-      const auto &patch_dof_handler = local_cell_problem.get_dof_handler();
-      const auto &patch_triangulation_wrong =
-          local_cell_problem.get_triangulation();
+        const auto &patch_dof_handler = local_cell_problem.get_dof_handler();
+        const auto &patch_triangulation_wrong =
+            local_cell_problem.get_triangulation();
+        // check this patch_triangulation_wrong!!!
 
-      for(auto pair : patch_to_global_triangulation_map) {
+        for(auto pair : patch_to_global_triangulation_map) {
 
-        // const typename DoFHandler<dim>::cell_iterator patch_cell(
-        //     &pair.first->get_triangulation(), pair.first->level(),
-        //     pair.first->index(), &patch_dof_handler);
+          const typename DoFHandler<dim>::cell_iterator patch_cell(
+              &patch_triangulation_wrong, pair.first->level(),
+              pair.first->index(), &patch_dof_handler);
 
-        // const typename DoFHandler<dim>::cell_iterator global_cell(
-        //     &pair.second->get_triangulation(), pair.second->level(),
-        //     pair.second->index(), &dof_handler);
+          const typename DoFHandler<dim>::cell_iterator global_cell(
+              &dof_handler.get_triangulation(), pair.second->level(),
+              pair.second->index(), &dof_handler);
 
-        const typename DoFHandler<dim>::cell_iterator patch_cell(
-            &patch_triangulation_wrong, pair.first->level(),
-            pair.first->index(), &patch_dof_handler);
+          patch_cell->get_dof_values(loc_basis[i], temp_values);
+          global_cell->set_dof_values(temp_values, basis_function);
 
-        const typename DoFHandler<dim>::cell_iterator global_cell(
-            &dof_handler.get_triangulation(), pair.second->level(),
-            pair.second->index(), &dof_handler);
+        }
 
-        // FIXME
-        patch_cell->get_dof_values(loc_basis1, temp_values);
-        global_cell->set_dof_values(temp_values, basis_function);
+        // for FullMatrix in dealii, is there a way to append a column vector to FullMatrix?
+        Eigen::VectorXd basis_function_temp((Nx * nx + 1) * (Nx * nx + 1));
+        for (unsigned int k = 0; k < basis_function.size(); k++) {
+          basis_function_temp(k) = basis_function[k];
+        }
+        Rms.col(Rms_i) = basis_function_temp;
+        // std::cout << Rms.cols() << " " << Rms_i << std::endl;
+        Rms_i += 1;
+          
       }
 
     }
 
 }
+
+
 
 
 
@@ -472,7 +491,7 @@ void Step4<dim>::fine_sol()
   // solve()
   {
 
-    SolverControl            solver_control(5000, 1e-12);
+    SolverControl            solver_control(5000, 1e-5);
     SolverCG<Vector<double>> solver(solver_control);
     solver.solve(Afine, sol_fine, rhs_fine, PreconditionIdentity());
   
@@ -489,6 +508,73 @@ void Step4<dim>::fine_sol()
 
 
 
+// get coarse grid matrices and solutions
+template <int dim>
+void Step4<dim>::coarse_sol()
+{
+  // convert Rms to dealii type FullMatrix
+  FullMatrix<double> Rms1(Rms.rows(), Rms.cols());
+  for (int i = 0; i < Rms.rows(); i++) {
+    for (int j = 0; j < Rms.cols(); j++) {
+      Rms1(i, j) = Rms(i, j);
+    }
+  }
+
+  // convert sparse matrix to full matrix
+  // check this copy from !! can it assign all the values correctly??
+  FullMatrix<double> AfineDense;
+  AfineDense.copy_from(Afine);
+
+
+  // Acoarse = R^T * Afine * R
+  FullMatrix<double> Acoarse(coarse_size, coarse_size);
+  FullMatrix<double> R_T_Afine(coarse_size, fine_size);
+  Rms1.Tmmult(R_T_Afine, AfineDense);
+  R_T_Afine.mmult(Acoarse, Rms1);
+
+  // F_coarse = R^T * F_fine;
+  Vector<double> rhs_coarse(coarse_size);
+  Rms1.Tvmult(rhs_coarse, rhs_fine);
+ 
+
+  Vector<double> sol_coarse_temp(coarse_size);
+
+  SolverControl            solver_control_coarse(5000, 1e-5);
+  SolverCG<Vector<double>> solver_coarse(solver_control_coarse);
+  solver_coarse.solve(Acoarse, sol_coarse_temp, rhs_coarse, PreconditionIdentity());
+
+  std::cout << "   " << solver_control_coarse.last_step()
+            << " CG iterations needed in coarse method to obtain convergence." << std::endl;
+
+
+  // convert the coarse grid solution back to fine grid;
+  // sol_coarse = R * sol_coarse_temp
+  sol_coarse.reinit(fine_size);
+  Rms1.vmult(sol_coarse, sol_coarse_temp);
+
+  // get error; relative L2error = 
+  // (sol_fine - sol_coarse) * Mfine * (sol_fine - sol_coarse) / (sol_fine * Mfine * sol_fine)
+  double L2error;
+
+  Vector<double> difference = sol_fine;
+  difference.add(-1.0, sol_coarse);
+
+  double numerator;
+  Vector<double> Mfine_times_difference(fine_size);
+  Mfine.vmult(Mfine_times_difference, difference);
+  numerator = difference * Mfine_times_difference;
+
+  double denominator;
+  Vector<double> Mfine_times_sol_fine(fine_size);
+  Mfine.vmult(Mfine_times_sol_fine, sol_fine);
+  denominator = sol_fine * Mfine_times_sol_fine;
+
+  L2error = numerator / denominator;
+
+  std::cout << "the relative L2 error is : " << L2error << std:: endl;
+
+
+}
 
 
 
@@ -501,6 +587,8 @@ void Step4<dim>::run()
   buildPOU();
   fine_sol();
   global_grid();
+  coarse_sol();
+
 
 }
 

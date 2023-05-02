@@ -74,6 +74,10 @@
 #include <../../eigen-3147391d946bb4b6c68edd901f2add6ac1f31f8c/Eigen/Dense>
 #include <../../eigen-3147391d946bb4b6c68edd901f2add6ac1f31f8c/Eigen/Eigenvalues>
 
+// #include <Eigen/Dense>
+// #include <Eigen/Eigenvalues>
+
+
 using namespace dealii;
 
 
@@ -124,7 +128,7 @@ public:
              Eigen::MatrixXd input_POU, Point<dim> input_coarse_center, 
              double input_fine_side);
 
-  const Triangulation<dim> &get_triangulation() const { return  triangulation; }
+  const Triangulation<dim> &get_triangulation() const { return triangulation; }
   const DoFHandler<dim> &get_dof_handler() const { return dof_handler; }
 
 private:
@@ -134,7 +138,7 @@ private:
   void solve();
   void output_results() const;
 
-  Triangulation<dim> triangulation;
+  Triangulation<dim> triangulation;  // consider &
   FE_Q<dim>          fe;
   DoFHandler<dim>    dof_handler;
 
@@ -165,6 +169,7 @@ void Local<dim>::setUp(Triangulation<dim> &input_triangulation, unsigned int inp
                         double input_fine_side)
 {
     triangulation.copy_triangulation(input_triangulation);
+    // triangulation = &input_triangulation;
     n_of_loc_basis = input_n_of_loc_basis;
     POU = input_POU;
     coarse_center = input_coarse_center;
@@ -345,7 +350,7 @@ void Local<dim>::solve()
                                      solution,
                                      system_rhs, false);
 
-    SolverControl            solver_control(2000, 1e-12);
+    SolverControl            solver_control(2000, 1e-5);
     SolverCG<Vector<double>> solver(solver_control);
 
 
