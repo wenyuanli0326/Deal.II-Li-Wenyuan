@@ -161,7 +161,7 @@ private:
   const double cube_start = 0;
   const double cube_end = 1;
   int loc_refine_times = 3;
-  int global_refine_times = 3;
+  int global_refine_times = 2;
   int total_refine_times = loc_refine_times + global_refine_times;
 
   unsigned int n_of_loc_basis = 5;
@@ -209,7 +209,10 @@ void Step4<dim>:: buildPOU()
 {
   int size1 = (int) round(pow(2, loc_refine_times + 1)) + 1;
   int size2 = (int) round(pow(2, loc_refine_times)) + 1;
-  double side = 1 / pow(2, loc_refine_times - 1);
+  double side = 1.0 / (size2 - 1);
+
+  std::cout << size1 << std::endl;
+  std::cout << size2 << std::endl;
 
   POU.resize(size1, size1);
   Eigen::MatrixXd topleft(size2, size2);
@@ -234,6 +237,8 @@ void Step4<dim>:: buildPOU()
   POU.block(size2, 0, size2 - 1, size2) = botleft.bottomRows(size2 - 1);
   POU.bottomRightCorner(size2 - 1, size2 - 1) = botright.bottomRightCorner(size2 - 1, size2 - 1);
 
+  std::cout << topleft << std::endl;
+  std::cout << POU << std::endl;
 }
 
 
@@ -342,9 +347,39 @@ void Step4<dim>:: global_grid()
         }
         Rms.col(Rms_i) = basis_function_temp;
         
+        
+
+
+        // check basis functions
+
+        Vector<double> basis(Rms.rows());
+
+        for (unsigned int j = 0; j < Rms.rows(); j++) {
+          basis[j] = Rms(j, Rms_i);
+        }
+
+        DataOut<dim> data_out;
+
+        data_out.attach_dof_handler(dof_handler);
+
+        data_out.add_data_vector(basis, "basis");
+
+        data_out.build_patches();
+
+        std::ofstream out("basis-global.vtk");
+
+        data_out.write_vtk(out);
+
+
+
         Rms_i += 1;
+
         
       }
+
+       if (Rms_i == 1) {
+          break;
+        }
 
     }
 
@@ -492,9 +527,11 @@ void Step4<dim>::fine_sol()
     SolverControl            solver_control(10000, 1e-3);
     SolverCG<Vector<double>> solver(solver_control);
     solver.solve(Afine, sol_fine, rhs_fine, PreconditionIdentity());
+
+    // sparse Direct Unmfpack initialize  vmmult 
   
     std::cout << "   " << solver_control.last_step()
-              << " CG iterations needed to obtain convergence." << std::endl;
+              << " CG iterations needed in fine grid to obtain convergence." << std::endl;
 
   }
   

@@ -503,33 +503,58 @@ void Local<dim>::solve()
   // remember to modify Slocal !!!!
   Slocal0 = Slocal0 / coarse_side / coarse_side;
 
-  Eigen::MatrixXd Asnap = Rsnap.transpose() * Alocal0 * Rsnap;
-  Eigen::MatrixXd Ssnap = Rsnap.transpose() * Slocal0 * Rsnap;
+//   Eigen::MatrixXd Asnap = Rsnap.transpose() * Alocal0 * Rsnap;
+//   Eigen::MatrixXd Ssnap = Rsnap.transpose() * Slocal0 * Rsnap;
 
 
-  // to ensure the matrices are symmetric
-  // they are symmetric originally, only some machine error difference
-  Asnap = (Asnap + Asnap.transpose()) / 2;
-  Ssnap = (Ssnap + Ssnap.transpose()) / 2;
+//   // to ensure the matrices are symmetric
+//   // they are symmetric originally, only some machine error difference
+//   Asnap = (Asnap + Asnap.transpose()) / 2;
+//   Ssnap = (Ssnap + Ssnap.transpose()) / 2;
 
 
+//   Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXd> ges;
+
+//   ges.compute(Asnap, Ssnap);
+
+
+//   // std::cout << "The (complex) numerators of the generalzied eigenvalues are: " << ges.alphas().transpose() << std::endl;
+//   // std::cout << "The (real) denominatore of the generalzied eigenvalues are: " << ges.betas().transpose() << std::endl;
+// //   std::cout << "The (complex) generalzied eigenvalues are (alphas./beta): " << ges.eigenvalues().transpose() << std::endl;
+//   // std::cout << "The (complex) generalzied eigenvectors are: " << ges.eigenvectors().transpose() << std::endl;
+
+//   // // remember to modify the matrix Slocal
+
+
+//   Eigen::MatrixXd loc_basis0;
+//   loc_basis0 = Rsnap * ges.eigenvectors().leftCols(n_of_loc_basis);
+
+
+
+
+  // for testing snapshot space
+  Alocal0 = (Alocal0 + Alocal0.transpose()) / 2;
+  Slocal0 = (Slocal0 + Slocal0.transpose()) / 2;
   Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXd> ges;
-
-  ges.compute(Asnap, Ssnap);
-
-
-  // std::cout << "The (complex) numerators of the generalzied eigenvalues are: " << ges.alphas().transpose() << std::endl;
-  // std::cout << "The (real) denominatore of the generalzied eigenvalues are: " << ges.betas().transpose() << std::endl;
-//   std::cout << "The (complex) generalzied eigenvalues are (alphas./beta): " << ges.eigenvalues().transpose() << std::endl;
-  // std::cout << "The (complex) generalzied eigenvectors are: " << ges.eigenvectors().transpose() << std::endl;
-
-  // // remember to modify the matrix Slocal
-
-
+  ges.compute(Alocal0, Slocal0);
   Eigen::MatrixXd loc_basis0;
-  loc_basis0 = Rsnap * ges.eigenvectors().leftCols(n_of_loc_basis);
+  loc_basis0 = ges.eigenvectors().leftCols(n_of_loc_basis);
+
+  // for testing 
 
   
+
+  // for testing POU and also the mapping between local and global
+  for (int i = 0; i < loc_basis0.rows(); i++) {
+    for (int j = 0; j < loc_basis0.cols(); j++) {
+      loc_basis0(i, j) = 1.0;
+    }
+  }
+
+  // for testing 
+
+
+
 
   MappingQ<dim> mapping(1);
   std::map<types::global_dof_index, Point<dim>> support_points;
@@ -545,6 +570,8 @@ void Local<dim>::solve()
 // yes, they match. I checked the support points and the boundary_values.
 
   int move_position = POU.cols() / 2;
+
+
   
   for (auto support_point : support_points) {
     Point<dim> coordinates = support_point.second;
@@ -557,6 +584,35 @@ void Local<dim>::solve()
   loc_basis = loc_basis0.array().colwise() * POUvector.array();
   
 
+
+
+
+  // for testing 
+  DataOut<dim> data_out1;
+
+  data_out1.attach_dof_handler(dof_handler);
+
+
+
+  Vector<double> POUsolution;
+  POUsolution.reinit(dof_handler.n_dofs());
+  
+
+  for (int i = 0; i < loc_basis.rows(); i++) {
+    POUsolution[i] = POUvector(i, 0);
+  }
+//   std::cout << solution << std::endl;
+
+  data_out1.add_data_vector(POUsolution, "POUsolution");
+  
+
+  data_out1.build_patches();
+
+  std::ofstream output1("solution-POU-local.vtk");
+
+  data_out1.write_vtk(output1);
+
+  // for testing 
 }
 
 
@@ -607,7 +663,7 @@ Eigen::MatrixXd Local<dim>::run()
   setup_system();
   assemble_system();
   solve();
-  // output_results();
+  output_results();
 
   return loc_basis;
 }
