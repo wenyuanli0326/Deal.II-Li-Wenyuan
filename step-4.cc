@@ -60,6 +60,8 @@
 #include <string>
 #include <vector>
 
+// for Ax = b
+#include <deal.II/lac/sparse_direct.h>
 
 
  
@@ -161,7 +163,7 @@ private:
   const double cube_start = 0;
   const double cube_end = 1;
   int loc_refine_times = 3;
-  int global_refine_times = 2;
+  int global_refine_times = 3;
   int total_refine_times = loc_refine_times + global_refine_times;
 
   unsigned int n_of_loc_basis = 5;
@@ -237,8 +239,7 @@ void Step4<dim>:: buildPOU()
   POU.block(size2, 0, size2 - 1, size2) = botleft.bottomRows(size2 - 1);
   POU.bottomRightCorner(size2 - 1, size2 - 1) = botright.bottomRightCorner(size2 - 1, size2 - 1);
 
-  std::cout << topleft << std::endl;
-  std::cout << POU << std::endl;
+
 }
 
 
@@ -248,7 +249,7 @@ template <int dim>
 void Step4<dim>:: global_grid()
 {
 
-
+  std::cout << "Start to build coarse grid basis functions. " << std::endl;
 
 // get the interior coarse degrees of freedom
   std::vector<Point<dim>> coarse_centers;
@@ -280,7 +281,7 @@ void Step4<dim>:: global_grid()
         }
     }
   }
-
+ 
   Rms.resize((Nx * nx + 1) * (Nx * nx + 1), n_of_loc_basis * (Nx - 1) * (Nx - 1));
   int Rms_i = 0;
 
@@ -358,6 +359,10 @@ void Step4<dim>:: global_grid()
           basis[j] = Rms(j, Rms_i);
         }
 
+        // std::cout << "Rms_i = " << Rms_i << std::endl;
+        // std::cout << basis << std::endl; 
+
+
         DataOut<dim> data_out;
 
         data_out.attach_dof_handler(dof_handler);
@@ -377,9 +382,9 @@ void Step4<dim>:: global_grid()
         
       }
 
-       if (Rms_i == 1) {
-          break;
-        }
+      //  if (Rms_i == 1) {
+      //     break;
+      //   }
 
     }
 
@@ -523,15 +528,22 @@ void Step4<dim>::fine_sol()
 
   // solve()
   {
-    std::cout << "Start to solve fine solution. " << std::endl;
-    SolverControl            solver_control(10000, 1e-3);
-    SolverCG<Vector<double>> solver(solver_control);
-    solver.solve(Afine, sol_fine, rhs_fine, PreconditionIdentity());
+    // std::cout << "Start to solve fine solution. " << std::endl;
+    // SolverControl            solver_control(10000, 1e-3);
+    // SolverCG<Vector<double>> solver(solver_control);
+    // solver.solve(Afine, sol_fine, rhs_fine, PreconditionIdentity());
 
-    // sparse Direct Unmfpack initialize  vmmult 
+    // // sparse Direct Unmfpack initialize  vmmult 
   
-    std::cout << "   " << solver_control.last_step()
-              << " CG iterations needed in fine grid to obtain convergence." << std::endl;
+    // std::cout << "   " << solver_control.last_step()
+    //           << " CG iterations needed in fine grid to obtain convergence." << std::endl;
+
+
+    std::cout << "Start to solve fine solution. " << std::endl;
+    SparseDirectUMFPACK AfineInverse;
+    AfineInverse.initialize(Afine);
+    AfineInverse.vmult(sol_fine, rhs_fine);
+
 
   }
   
@@ -574,12 +586,19 @@ void Step4<dim>::coarse_sol()
   std::cout << "Start to solve coarse solution." << std::endl;
   Vector<double> sol_coarse_temp(coarse_size);
 
-  SolverControl            solver_control_coarse(10000, 1e-3);
+  SolverControl            solver_control_coarse(10000, 1e-8);
   SolverCG<Vector<double>> solver_coarse(solver_control_coarse);
   solver_coarse.solve(Acoarse, sol_coarse_temp, rhs_coarse, PreconditionIdentity());
 
   std::cout << "   " << solver_control_coarse.last_step()
             << " CG iterations needed in coarse method to obtain convergence." << std::endl;
+
+
+  // std::cout << "Start to solve coarse solution. " << std::endl;
+  // Vector<double> sol_coarse_temp(coarse_size);
+  // SparseDirectUMFPACK AcoarseInverse;   // does not work for full matrix
+  // AcoarseInverse.initialize(Acoarse);
+  // AcoarseInverse.vmult(sol_coarse_temp, rhs_coarse);
 
 
   // convert the coarse grid solution back to fine grid;

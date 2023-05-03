@@ -532,7 +532,16 @@ void Local<dim>::solve()
 
 
 
+  // // testing Alocal and Slocal
+  // std::cout << "Alocal0 = " << std::endl;
+  // std::cout << Alocal0 << std::endl;
+  // std::cout << "Slocal0 = " << std::endl;
+  // std::cout << Slocal0 << std::endl;
+  // // testing
+
   // for testing snapshot space
+
+
   Alocal0 = (Alocal0 + Alocal0.transpose()) / 2;
   Slocal0 = (Slocal0 + Slocal0.transpose()) / 2;
   Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXd> ges;
@@ -541,18 +550,18 @@ void Local<dim>::solve()
   loc_basis0 = ges.eigenvectors().leftCols(n_of_loc_basis);
 
   // for testing 
+ 
 
-  
+  // for testing
+  // every entry of loc_basis0 is the same !!!!! check this !
+  // std::cout << "eigenvalues are " << std::endl;
+  // std::cout << ges.eigenvalues() << std::endl;
+  // std::cout << "all eigenvectors are " << std::endl;
+  // std::cout << ges.eigenvectors() << std::endl; 
 
-  // for testing POU and also the mapping between local and global
-  for (int i = 0; i < loc_basis0.rows(); i++) {
-    for (int j = 0; j < loc_basis0.cols(); j++) {
-      loc_basis0(i, j) = 1.0;
-    }
-  }
+  // std::cout << loc_basis0 << std::endl;
 
   // for testing 
-
 
 
 
@@ -581,38 +590,15 @@ void Local<dim>::solve()
 
   }
 
+
+  // for (int i = 0; i < loc_basis0.rows(); i++) {
+  //   loc_basis0(i, 0) = 1.0;
+  // }
+
+
   loc_basis = loc_basis0.array().colwise() * POUvector.array();
   
 
-
-
-
-  // for testing 
-  DataOut<dim> data_out1;
-
-  data_out1.attach_dof_handler(dof_handler);
-
-
-
-  Vector<double> POUsolution;
-  POUsolution.reinit(dof_handler.n_dofs());
-  
-
-  for (int i = 0; i < loc_basis.rows(); i++) {
-    POUsolution[i] = POUvector(i, 0);
-  }
-//   std::cout << solution << std::endl;
-
-  data_out1.add_data_vector(POUsolution, "POUsolution");
-  
-
-  data_out1.build_patches();
-
-  std::ofstream output1("solution-POU-local.vtk");
-
-  data_out1.write_vtk(output1);
-
-  // for testing 
 }
 
 
@@ -640,7 +626,7 @@ void Local<dim>::output_results() const
 
   data_out.build_patches();
 
-  std::ofstream output("solution-basis.vtk");
+  std::ofstream output("solution-basis-local.vtk");
 
   data_out.write_vtk(output);
 
