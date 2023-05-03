@@ -164,7 +164,7 @@ private:
   int global_refine_times = 3;
   int total_refine_times = loc_refine_times + global_refine_times;
 
-  unsigned int n_of_loc_basis = 1;
+  unsigned int n_of_loc_basis = 5;
 
 
 // global + loc = total
@@ -293,7 +293,7 @@ void Step4<dim>:: global_grid()
 
       // call the local cell problem solver with patch_triangulation
       Local<dim> local_cell_problem;
-      local_cell_problem.setUp(patch_triangulation, n_of_loc_basis, POU, coarse_center, fine_side);
+      local_cell_problem.setUp(patch_triangulation, n_of_loc_basis, POU, coarse_center, fine_side, coarse_side);
       Eigen::MatrixXd loc_basis_return = local_cell_problem.run();
 
 
@@ -341,42 +341,14 @@ void Step4<dim>:: global_grid()
           basis_function_temp(k) = basis_function[k];
         }
         Rms.col(Rms_i) = basis_function_temp;
-        // std::cout << Rms.cols() << " " << Rms_i << std::endl;
         
-        
-
-        // check basis functions
-
-        Vector<double> basis(Rms.rows());
-       
-        for (unsigned int j = 0; j < Rms.rows(); j++) {
-          basis[j] = Rms(j, Rms_i);
-        }
-
-        DataOut<dim> data_out;
-
-        data_out.attach_dof_handler(dof_handler);
-
-        data_out.add_data_vector(basis, "basis");
-
-        data_out.build_patches();
-
-        std::ofstream out("basis.vtk");
-
-        data_out.write_vtk(out);
-
-
-
         Rms_i += 1;
         
       }
 
-
-        if (Rms_i == 20) {
-          break;
-        }
-
     }
+
+    std::cout << "Finish building coarse basis. " << std::endl;
 
 }
 
@@ -516,8 +488,8 @@ void Step4<dim>::fine_sol()
 
   // solve()
   {
-
-    SolverControl            solver_control(5000, 1e-5);
+    std::cout << "Start to solve fine solution. " << std::endl;
+    SolverControl            solver_control(10000, 1e-3);
     SolverCG<Vector<double>> solver(solver_control);
     solver.solve(Afine, sol_fine, rhs_fine, PreconditionIdentity());
   
@@ -562,10 +534,10 @@ void Step4<dim>::coarse_sol()
   Vector<double> rhs_coarse(coarse_size);
   Rms1.Tvmult(rhs_coarse, rhs_fine);
  
-
+  std::cout << "Start to solve coarse solution." << std::endl;
   Vector<double> sol_coarse_temp(coarse_size);
 
-  SolverControl            solver_control_coarse(5000, 1e-5);
+  SolverControl            solver_control_coarse(10000, 1e-3);
   SolverCG<Vector<double>> solver_coarse(solver_control_coarse);
   solver_coarse.solve(Acoarse, sol_coarse_temp, rhs_coarse, PreconditionIdentity());
 
@@ -633,37 +605,6 @@ void Step4<dim>::output_results() const
   std::ofstream out1("sol_coarse.vtk");
 
   data_out1.write_vtk(out1);
-
-  // std::ofstream output(dim == 2 ? "solution-2d.vtk" : "solution-3d.vtk");
-
-  // data_out.write_vtk(output);
-
-  // DataOut<dim> data_out;
-  // data_out.add_data_vector(POU.reshaped(dof_handler.n_dofs(),1), "solution");
-  // std::ofstream output(dim == 2 ? "solution-2d.vtk" : "solution-3d.vtk");
-  // data_out.write_vtk(output);
-
-
-// // check basis functions
-//   for (unsigned int i = 0; i < Rms1.n_cols(); i++) {
-
-//     Vector<double> basis(Rms1.n_rows());
-//     for (unsigned int j = 0; j < Rms1.n_rows(); j++) {
-//       basis[j] = Rms1(j, i);
-//     }
-
-//     DataOut<dim> data_out;
-
-//     data_out.attach_dof_handler(dof_handler);
-
-//     data_out.add_data_vector(basis, "basis");
-    
-//     data_out.build_patches();
-
-//     std::ofstream out("basis" + std::to_string(i) + ".vtk");
-
-//     data_out.write_vtk(out);
-//   }
 
 
 }

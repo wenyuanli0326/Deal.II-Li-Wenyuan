@@ -102,12 +102,124 @@ double BoundaryValues<dim>::value(const Point<dim> & /*p*/,
 template <int dim>
 double kappa(const Point<dim> &p)
 {
-  if (p(0) >= 0.1 and p(0) <= 0.5 and 0.2 <= p(1) and p(1) <= 0.4) {
-    return 1000;
-  } else if (p(0) >= 0.8 and p(0) <= 0.9 and 0.7 <= p(1) and p(1) <= 1.0) {
-    return 1000;
+  double high_value = 10000.0;
+  double low_value = 1.0;
+  if (0.105 <= p(0) and p(0) <= 0.205 and 0.135 <= p(1) and p(1) <= 0.185) {
+    return high_value;
+  } else if (0.205 <= p(0) and p(0) <= 0.305 and 0.125 <= p(1) and p(1) <= 0.165) {
+    return high_value;
+  } else if (0.205 <= p(0) and p(0) <= 0.305 and 0.125 <= p(1) and p(1) <= 0.165) {
+    return high_value;
+  } else if (0.405 <= p(0) and p(0) <= 0.505 and 0.155 <= p(1) and p(1) <= 0.195) {
+    return high_value;
+  } else if (0.505 <= p(0) and p(0) <= 0.605 and 0.135 <= p(1) and p(1) <= 0.185) {
+    return high_value;
+  } else if (0.605 <= p(0) and p(0) <= 0.705 and 0.125 <= p(1) and p(1) <= 0.165) {
+    return high_value;
+  } else if (0.805 <= p(0) and p(0) <= 0.905 and 0.155 <= p(1) and p(1) <= 0.195) {
+    return high_value;
+
+  } else if (0.135 <= p(0) and p(0) <= 0.165 and 0.245 <= p(1) and p(1) <= 0.275) {
+    return high_value;
+  } else if (0.205 <= p(0) and p(0) <= 0.305 and 0.255 <= p(1) and p(1) <= 0.295) {
+    return high_value;
+  } else if (0.235 <= p(0) and p(0) <= 0.265 and 0.245 <= p(1) and p(1) <= 0.255) {
+    return high_value;
+  } else if (0.305 <= p(0) and p(0) <= 0.405 and 0.245 <= p(1) and p(1) <= 0.285) {
+    return high_value;
+  } else if (0.405 <= p(0) and p(0) <= 0.505 and 0.235 <= p(1) and p(1) <= 0.275) {
+    return high_value;
+  } else if (0.535 <= p(0) and p(0) <= 0.565 and 0.245 <= p(1) and p(1) <= 0.275) {
+    return high_value;
+  } else if (0.635 <= p(0) and p(0) <= 0.665 and 0.245 <= p(1) and p(1) <= 0.275) {
+    return high_value;
+  } else if (0.735 <= p(0) and p(0) <= 0.765 and 0.245 <= p(1) and p(1) <= 0.275) {
+    return high_value;
+  } else if (0.835 <= p(0) and p(0) <= 0.865 and 0.245 <= p(1) and p(1) <= 0.275) {
+    return high_value;
+
+  } else if (0.105 <= p(0) and p(0) <= 0.205 and 0.335 <= p(1) and p(1) <= 0.385) {
+    return high_value;
+  } else if (0.205 <= p(0) and p(0) <= 0.305 and 0.325 <= p(1) and p(1) <= 0.365) {
+    return high_value;
+  } else if (0.205 <= p(0) and p(0) <= 0.305 and 0.325 <= p(1) and p(1) <= 0.365) {
+    return high_value;
+  } else if (0.405 <= p(0) and p(0) <= 0.505 and 0.355 <= p(1) and p(1) <= 0.395) {
+    return high_value;
+  } else if (0.505 <= p(0) and p(0) <= 0.605 and 0.335 <= p(1) and p(1) <= 0.385) {
+    return high_value;
+  } else if (0.605 <= p(0) and p(0) <= 0.705 and 0.325 <= p(1) and p(1) <= 0.365) {
+    return high_value;
+  } else if (0.805 <= p(0) and p(0) <= 0.905 and 0.355 <= p(1) and p(1) <= 0.395) {
+    return high_value;
+
+  } else if (0.105 <= p(0) and p(0) <= 0.135 and 0.575 <= p(1) and p(1) <= 0.595) {
+    return high_value;
+  } else if (0.135 <= p(0) and p(0) <= 0.295 and 0.565 <= p(1) and p(1) <= 0.585) {
+    return high_value;
+  } else if (0.295 <= p(0) and p(0) <= 0.525 and 0.555 <= p(1) and p(1) <= 0.575) {
+    return high_value;
+  } else if (0.525 <= p(0) and p(0) <= 0.825 and 0.545 <= p(1) and p(1) <= 0.565) {
+    return high_value;
+  } else if (0.825 <= p(0) and p(0) <= 0.905 and 0.535 <= p(1) and p(1) <= 0.555) {
+    return high_value;
+
+  } else if (0.135 <= p(0) and p(0) <= 0.165 and 0.645 <= p(1) and p(1) <= 0.675) {
+    return high_value;
+  } else if (0.205 <= p(0) and p(0) <= 0.305 and 0.655 <= p(1) and p(1) <= 0.695) {
+    return high_value;
+  } else if (0.235 <= p(0) and p(0) <= 0.265 and 0.645 <= p(1) and p(1) <= 0.655) {
+    return high_value;
+  } else if (0.305 <= p(0) and p(0) <= 0.405 and 0.645 <= p(1) and p(1) <= 0.685) {
+    return high_value;
+  } else if (0.405 <= p(0) and p(0) <= 0.505 and 0.635 <= p(1) and p(1) <= 0.675) {
+    return high_value;
+  } else if (0.535 <= p(0) and p(0) <= 0.565 and 0.645 <= p(1) and p(1) <= 0.675) {
+    return high_value;
+  } else if (0.635 <= p(0) and p(0) <= 0.665 and 0.645 <= p(1) and p(1) <= 0.675) {
+    return high_value;
+  } else if (0.735 <= p(0) and p(0) <= 0.765 and 0.645 <= p(1) and p(1) <= 0.675) {
+    return high_value;
+  } else if (0.835 <= p(0) and p(0) <= 0.865 and 0.645 <= p(1) and p(1) <= 0.675) {
+    return high_value;
+
+  } else if (0.105 <= p(0) and p(0) <= 0.205 and 0.735 <= p(1) and p(1) <= 0.785) {
+    return high_value;
+  } else if (0.205 <= p(0) and p(0) <= 0.305 and 0.725 <= p(1) and p(1) <= 0.765) {
+    return high_value;
+  } else if (0.205 <= p(0) and p(0) <= 0.305 and 0.725 <= p(1) and p(1) <= 0.765) {
+    return high_value;
+  } else if (0.405 <= p(0) and p(0) <= 0.505 and 0.755 <= p(1) and p(1) <= 0.795) {
+    return high_value;
+  } else if (0.505 <= p(0) and p(0) <= 0.605 and 0.735 <= p(1) and p(1) <= 0.785) {
+    return high_value;
+  } else if (0.605 <= p(0) and p(0) <= 0.705 and 0.725 <= p(1) and p(1) <= 0.765) {
+    return high_value;
+  } else if (0.805 <= p(0) and p(0) <= 0.905 and 0.755 <= p(1) and p(1) <= 0.795) {
+    return high_value;
+
+  } else if (0.135 <= p(0) and p(0) <= 0.165 and 0.845 <= p(1) and p(1) <= 0.875) {
+    return high_value;
+  } else if (0.205 <= p(0) and p(0) <= 0.305 and 0.855 <= p(1) and p(1) <= 0.895) {
+    return high_value;
+  } else if (0.235 <= p(0) and p(0) <= 0.265 and 0.845 <= p(1) and p(1) <= 0.855) {
+    return high_value;
+  } else if (0.305 <= p(0) and p(0) <= 0.405 and 0.845 <= p(1) and p(1) <= 0.885) {
+    return high_value;
+  } else if (0.405 <= p(0) and p(0) <= 0.505 and 0.835 <= p(1) and p(1) <= 0.875) {
+    return high_value;
+  } else if (0.535 <= p(0) and p(0) <= 0.565 and 0.845 <= p(1) and p(1) <= 0.875) {
+    return high_value;
+  } else if (0.635 <= p(0) and p(0) <= 0.665 and 0.845 <= p(1) and p(1) <= 0.875) {
+    return high_value;
+  } else if (0.735 <= p(0) and p(0) <= 0.765 and 0.845 <= p(1) and p(1) <= 0.875) {
+    return high_value;
+  } else if (0.835 <= p(0) and p(0) <= 0.865 and 0.845 <= p(1) and p(1) <= 0.875) {
+    return high_value;
+
+
   } else {
-    return 1;
+    return low_value;
   }
 
 }
@@ -126,7 +238,16 @@ public:
   Eigen::MatrixXd run();
   void setUp(Triangulation<dim> &input_triangulation, unsigned int input_n_of_loc_basis,
              Eigen::MatrixXd input_POU, Point<dim> input_coarse_center, 
-             double input_fine_side);
+             double input_fine_side, double input_coarse_side) 
+    {
+      triangulation.copy_triangulation(input_triangulation);
+      // triangulation = &input_triangulation;
+      n_of_loc_basis = input_n_of_loc_basis;
+      POU = input_POU;
+      coarse_center = input_coarse_center;
+      fine_side = input_fine_side;
+      coarse_side = input_coarse_side;
+    }
 
   const Triangulation<dim> &get_triangulation() const { return triangulation; }
   const DoFHandler<dim> &get_dof_handler() const { return dof_handler; }
@@ -152,6 +273,7 @@ private:
   Eigen::MatrixXd POU;
   Point<dim> coarse_center;
   double fine_side;
+  double coarse_side;
 
   unsigned int n_of_loc_basis;
 
@@ -162,19 +284,14 @@ private:
 
 
 
-// check this !! the &;
-template <int dim>
-void Local<dim>::setUp(Triangulation<dim> &input_triangulation, unsigned int input_n_of_loc_basis,
-                        Eigen::MatrixXd input_POU, Point<dim> input_coarse_center, 
-                        double input_fine_side)
-{
-    triangulation.copy_triangulation(input_triangulation);
-    // triangulation = &input_triangulation;
-    n_of_loc_basis = input_n_of_loc_basis;
-    POU = input_POU;
-    coarse_center = input_coarse_center;
-    fine_side = input_fine_side;
-}
+// // check this !! the &;
+// template <int dim>
+// void Local<dim>::setUp(Triangulation<dim> &input_triangulation, unsigned int input_n_of_loc_basis,
+//                         Eigen::MatrixXd input_POU, Point<dim> input_coarse_center, 
+//                         double input_fine_side, double input_coarse_side)
+// {
+
+// }
 
 
 template <int dim>
@@ -383,10 +500,12 @@ void Local<dim>::solve()
     }
   }
 
-
+  // remember to modify Slocal !!!!
+  Slocal0 = Slocal0 / coarse_side / coarse_side;
 
   Eigen::MatrixXd Asnap = Rsnap.transpose() * Alocal0 * Rsnap;
   Eigen::MatrixXd Ssnap = Rsnap.transpose() * Slocal0 * Rsnap;
+
 
   // to ensure the matrices are symmetric
   // they are symmetric originally, only some machine error difference
@@ -488,7 +607,7 @@ Eigen::MatrixXd Local<dim>::run()
   setup_system();
   assemble_system();
   solve();
-  output_results();
+  // output_results();
 
   return loc_basis;
 }
