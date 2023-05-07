@@ -163,8 +163,9 @@ private:
   const double cube_start = 0;
   const double cube_end = 1;
   int loc_refine_times = 3;
-  int global_refine_times = 3;
+  int global_refine_times = 4;
   int total_refine_times = loc_refine_times + global_refine_times;
+  int compute_snapshot_flag = 0;   // 0: don't comput; 1: compute
 
   unsigned int n_of_loc_basis = 5;
 
@@ -299,7 +300,7 @@ void Step4<dim>:: global_grid()
 
       // call the local cell problem solver with patch_triangulation
       Local<dim> local_cell_problem;
-      local_cell_problem.setUp(patch_triangulation, n_of_loc_basis, POU, coarse_center, fine_side, coarse_side);
+      local_cell_problem.setUp(patch_triangulation, n_of_loc_basis, POU, coarse_center, fine_side, coarse_side, compute_snapshot_flag);
       Eigen::MatrixXd loc_basis_return = local_cell_problem.run();
 
 

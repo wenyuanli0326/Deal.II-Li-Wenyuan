@@ -238,7 +238,7 @@ public:
   Eigen::MatrixXd run();
   void setUp(Triangulation<dim> &input_triangulation, unsigned int input_n_of_loc_basis,
              Eigen::MatrixXd input_POU, Point<dim> input_coarse_center, 
-             double input_fine_side, double input_coarse_side) 
+             double input_fine_side, double input_coarse_side, int input_compute_snapshot_flag) 
     {
       triangulation.copy_triangulation(input_triangulation);
       // triangulation = &input_triangulation;
@@ -247,6 +247,7 @@ public:
       coarse_center = input_coarse_center;
       fine_side = input_fine_side;
       coarse_side = input_coarse_side;
+      compute_snapshot_flag = input_compute_snapshot_flag;
     }
 
   const Triangulation<dim> &get_triangulation() const { return triangulation; }
@@ -274,6 +275,7 @@ private:
   Point<dim> coarse_center;
   double fine_side;
   double coarse_side;
+  int compute_snapshot_flag;
 
   unsigned int n_of_loc_basis;
 
