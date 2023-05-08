@@ -103,8 +103,70 @@ using namespace dealii;
 
 
 
+// save the basis function
+void saveData(std::string fileName, Eigen::MatrixXd  matrix)
+{
+    //https://eigen.tuxfamily.org/dox/structEigen_1_1IOFormat.html
+    const static Eigen::IOFormat CSVFormat(Eigen::FullPrecision, Eigen::DontAlignCols, ", ", "\n");
+ 
+    std::ofstream file(fileName);
+    if (file.is_open())
+    {
+        file << matrix.format(CSVFormat);
+        file.close();
+    }
+}
 
-
+// load the basis functions
+Eigen::MatrixXd openData(std::string fileToOpen)
+{
+ 
+    // the inspiration for creating this function was drawn from here (I did NOT copy and paste the code)
+    // https://stackoverflow.com/questions/34247057/how-to-read-csv-file-and-assign-to-eigen-matrix
+     
+    // the input is the file: "fileToOpen.csv":
+    // a,b,c
+    // d,e,f
+    // This function converts input file data into the Eigen matrix format
+ 
+ 
+ 
+    // the matrix entries are stored in this variable row-wise. For example if we have the matrix:
+    // M=[a b c 
+    //    d e f]
+    // the entries are stored as matrixEntries=[a,b,c,d,e,f], that is the variable "matrixEntries" is a row vector
+    // later on, this vector is mapped into the Eigen matrix format
+    std::vector<double> matrixEntries;
+ 
+    // in this object we store the data from the matrix
+    std::ifstream matrixDataFile(fileToOpen);
+ 
+    // this variable is used to store the row of the matrix that contains commas 
+    std::string matrixRowString;
+ 
+    // this variable is used to store the matrix entry;
+    std::string matrixEntry;
+ 
+    // this variable is used to track the number of rows
+    int matrixRowNumber = 0;
+ 
+ 
+    while (getline(matrixDataFile, matrixRowString)) // here we read a row by row of matrixDataFile and store every line into the string variable matrixRowString
+    {
+        std::stringstream matrixRowStringStream(matrixRowString); //convert matrixRowString that is a string to a stream variable.
+ 
+        while (getline(matrixRowStringStream, matrixEntry, ',')) // here we read pieces of the stream matrixRowStringStream until every comma, and store the resulting character into the matrixEntry
+        {
+            matrixEntries.push_back(stod(matrixEntry));   //here we convert the string to double and fill in the row vector storing all the matrix entries
+        }
+        matrixRowNumber++; //update the column numbers
+    }
+ 
+    // here we convet the vector variable into the matrix and return the resulting object, 
+    // note that matrixEntries.data() is the pointer to the first memory location at which the entries of the vector matrixEntries are stored;
+    return Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(matrixEntries.data(), matrixRowNumber, matrixEntries.size() / matrixRowNumber);
+ 
+}
 
 
 template <int dim>
@@ -124,6 +186,9 @@ double RightHandSide<dim>::value(const Point<dim> & p,
   for (unsigned int i = 0; i < dim; ++i)
     return_value *= sin(M_PI * p(i));
 
+  // double return_value;
+  // return_value = 10.0 * exp( - 500.0 * ((p(0) - 0.5) * (p(0) - 0.5) + (p(1) - 0.5) * (p(1) - 0.5)));
+
   return return_value;
 }
 
@@ -140,7 +205,7 @@ public:
 
 private:
   void buildPOU();
-  void global_grid();
+  void build_coarse_basis();
   void fine_sol();
   void coarse_sol();
   void output_results() const;
@@ -159,15 +224,23 @@ private:
 
   Vector<double> sol_coarse;
 
-
+// central control panel
   const double cube_start = 0;
   const double cube_end = 1;
   int loc_refine_times = 3;
-  int global_refine_times = 4;
+  int global_refine_times = 3;
   int total_refine_times = loc_refine_times + global_refine_times;
-  int compute_snapshot_flag = 0;   // 0: don't comput; 1: compute
 
+  int compute_snapshot_flag = 0;   // 0: don't compute; 1: compute
+  bool compute_Rms = true;   // true: compute, false: load from file
+  // don't forget to change the name!
+  std::string saveFileName = "Rms_useless.csv";
+  std::string loadFileName = "Rms44.csv";
+  // the first number is global refine times, the second number is local refine times
+
+  unsigned int max_number_of_basis_computed = 1;
   unsigned int n_of_loc_basis = 5;
+// central control panel
 
 
 // global + loc = total
@@ -214,8 +287,8 @@ void Step4<dim>:: buildPOU()
   int size2 = (int) round(pow(2, loc_refine_times)) + 1;
   double side = 1.0 / (size2 - 1);
 
-  std::cout << size1 << std::endl;
-  std::cout << size2 << std::endl;
+  // std::cout << size1 << std::endl;
+  // std::cout << size2 << std::endl;
 
   POU.resize(size1, size1);
   Eigen::MatrixXd topleft(size2, size2);
@@ -247,149 +320,189 @@ void Step4<dim>:: buildPOU()
 
 
 template <int dim>
-void Step4<dim>:: global_grid()
+void Step4<dim>:: build_coarse_basis()
 {
+  Rms.resize(fine_size, coarse_size);
 
-  std::cout << "Start to build coarse grid basis functions. " << std::endl;
+  if (compute_Rms == true) {
+    std::cout << "Start to build coarse grid basis functions. " << std::endl;
 
-// get the interior coarse degrees of freedom
-  std::vector<Point<dim>> coarse_centers;
-  for (int i = 1; i < Nx; i++) {
-    for (int j = 1; j < Nx; j++) {
-      Point<dim> coarse_center(i * coarse_side, j * coarse_side);
-      coarse_centers.push_back(coarse_center);
-      // std::cout << "coarse center: " << coarse_center << std::endl;
+    // get the interior coarse degrees of freedom
+    std::vector<Point<dim>> coarse_centers;
+    for (int i = 1; i < Nx; i++) {
+      for (int j = 1; j < Nx; j++) {
+        Point<dim> coarse_center(i * coarse_side, j * coarse_side);
+        coarse_centers.push_back(coarse_center);
+        // std::cout << "coarse center: " << coarse_center << std::endl;
+      }
     }
-  }
 
 
-  using iterator_type = Triangulation<2>::cell_iterator;
-  using active_type   = Triangulation<2>::active_cell_iterator;
+    using iterator_type = Triangulation<2>::cell_iterator;
+    using active_type   = Triangulation<2>::active_cell_iterator;
 
-  std::vector<std::vector<active_type>> coarse_patches;
-  coarse_patches.resize(coarse_centers.size());
+    std::vector<std::vector<active_type>> coarse_patches;
+    coarse_patches.resize(coarse_centers.size());
 
 
-  for (active_type cell : triangulation.active_cell_iterators()) {
-    // std::cout << "cell center: " << cell->center() << std::endl;
-    Point<dim> cell_center = cell->center();
-    for (unsigned long i = 0; i < coarse_centers.size(); i++ ) {
-      Point<dim> coarse_center = coarse_centers[i];
-      if (abs(cell_center[0] - coarse_center[0]) < coarse_side && 
-        abs(cell_center[1] - coarse_center[1]) < coarse_side ) {
-          coarse_patches[i].push_back(cell);
+    for (active_type cell : triangulation.active_cell_iterators()) {
+      // std::cout << "cell center: " << cell->center() << std::endl;
+      Point<dim> cell_center = cell->center();
+      for (unsigned long i = 0; i < coarse_centers.size(); i++ ) {
+        Point<dim> coarse_center = coarse_centers[i];
+        if (abs(cell_center[0] - coarse_center[0]) < coarse_side && 
+          abs(cell_center[1] - coarse_center[1]) < coarse_side ) {
+            coarse_patches[i].push_back(cell);
+            
+          }
+      }
+    }
+  
+    
+    int Rms_i = 0;
+
+    for (unsigned long i = 0; i < coarse_centers.size(); i++)
+      {
+
+        std::vector<active_type> coarse_patch = coarse_patches[i];
+        Point<dim> coarse_center = coarse_centers[i];
+        std::map<active_type, active_type> patch_to_global_triangulation_map;
+        Triangulation<dim> patch_triangulation;
+
+        GridTools::build_triangulation_from_patch<Triangulation<2>>(
+          coarse_patch, patch_triangulation, patch_to_global_triangulation_map);
+
+
+        // call the local cell problem solver with patch_triangulation
+        Local<dim> local_cell_problem;
+        local_cell_problem.setUp(patch_triangulation, n_of_loc_basis, POU, coarse_center, fine_side, coarse_side, compute_snapshot_flag);
+        Eigen::MatrixXd loc_basis_return = local_cell_problem.run();
+
+
+        std::vector<Vector<double>> loc_basis;
+        for (int j = 0; j < loc_basis_return.cols(); j++) {
+          Vector<double> loc_basis_col(loc_basis_return.rows());
+
+          for (int i = 0; i < loc_basis_return.rows(); i++) {
+            loc_basis_col(i) = loc_basis_return(i, j);
+          }
+          loc_basis.push_back(loc_basis_col);
+        }
+
+        for (unsigned int i = 0; i < n_of_loc_basis; i++) {
+
+          Vector<double> basis_function;
+          basis_function.reinit(dof_handler.n_dofs());
+
+          Vector<double> temp_values;
+          temp_values.reinit(dof_handler.get_fe().n_dofs_per_cell());
+
+          const auto &patch_dof_handler = local_cell_problem.get_dof_handler();
+          const auto &patch_triangulation_wrong =
+              local_cell_problem.get_triangulation();
+          // check this patch_triangulation_wrong!!!
+
+          for(auto pair : patch_to_global_triangulation_map) {
+
+            const typename DoFHandler<dim>::cell_iterator patch_cell(
+                &patch_triangulation_wrong, pair.first->level(),
+                pair.first->index(), &patch_dof_handler);
+
+            const typename DoFHandler<dim>::cell_iterator global_cell(
+                &dof_handler.get_triangulation(), pair.second->level(),
+                pair.second->index(), &dof_handler);
+
+            patch_cell->get_dof_values(loc_basis[i], temp_values);
+            global_cell->set_dof_values(temp_values, basis_function);
+
+          }
+
+          // for FullMatrix in dealii, is there a way to append a column vector to FullMatrix?
+          Eigen::VectorXd basis_function_temp((Nx * nx + 1) * (Nx * nx + 1));
+          for (unsigned int k = 0; k < basis_function.size(); k++) {
+            basis_function_temp(k) = basis_function[k];
+          }
+          Rms.col(Rms_i) = basis_function_temp;
+          
+          
+
+
+          // // check basis functions
+
+          // Vector<double> basis(Rms.rows());
+
+          // for (unsigned int j = 0; j < Rms.rows(); j++) {
+          //   basis[j] = Rms(j, Rms_i);
+          // }
+
+          // // std::cout << "Rms_i = " << Rms_i << std::endl;
+          // // std::cout << basis << std::endl; 
+
+
+          // DataOut<dim> data_out;
+
+          // data_out.attach_dof_handler(dof_handler);
+
+          // data_out.add_data_vector(basis, "basis");
+
+          // data_out.build_patches();
+
+          // std::ofstream out("basis-global.vtk");
+
+          // data_out.write_vtk(out);
+          // // check basis functions
+
+
+          Rms_i += 1;
+
           
         }
-    }
-  }
- 
-  Rms.resize((Nx * nx + 1) * (Nx * nx + 1), n_of_loc_basis * (Nx - 1) * (Nx - 1));
-  int Rms_i = 0;
+        // // check basis functions
+        //  if (Rms_i >= 2) {
+        //     break;
+        //   }
+        // // check basis functions
 
-  for (unsigned long i = 0; i < coarse_centers.size(); i++)
-    {
-
-      std::vector<active_type> coarse_patch = coarse_patches[i];
-      Point<dim> coarse_center = coarse_centers[i];
-      std::map<active_type, active_type> patch_to_global_triangulation_map;
-      Triangulation<dim> patch_triangulation;
-
-      GridTools::build_triangulation_from_patch<Triangulation<2>>(
-        coarse_patch, patch_triangulation, patch_to_global_triangulation_map);
-
-
-      // call the local cell problem solver with patch_triangulation
-      Local<dim> local_cell_problem;
-      local_cell_problem.setUp(patch_triangulation, n_of_loc_basis, POU, coarse_center, fine_side, coarse_side, compute_snapshot_flag);
-      Eigen::MatrixXd loc_basis_return = local_cell_problem.run();
-
-
-      std::vector<Vector<double>> loc_basis;
-      for (int j = 0; j < loc_basis_return.cols(); j++) {
-        Vector<double> loc_basis_col(loc_basis_return.rows());
-
-        for (int i = 0; i < loc_basis_return.rows(); i++) {
-          loc_basis_col(i) = loc_basis_return(i, j);
-        }
-        loc_basis.push_back(loc_basis_col);
       }
-
-      for (unsigned int i = 0; i < n_of_loc_basis; i++) {
-
-        Vector<double> basis_function;
-        basis_function.reinit(dof_handler.n_dofs());
-
-        Vector<double> temp_values;
-        temp_values.reinit(dof_handler.get_fe().n_dofs_per_cell());
-
-        const auto &patch_dof_handler = local_cell_problem.get_dof_handler();
-        const auto &patch_triangulation_wrong =
-            local_cell_problem.get_triangulation();
-        // check this patch_triangulation_wrong!!!
-
-        for(auto pair : patch_to_global_triangulation_map) {
-
-          const typename DoFHandler<dim>::cell_iterator patch_cell(
-              &patch_triangulation_wrong, pair.first->level(),
-              pair.first->index(), &patch_dof_handler);
-
-          const typename DoFHandler<dim>::cell_iterator global_cell(
-              &dof_handler.get_triangulation(), pair.second->level(),
-              pair.second->index(), &dof_handler);
-
-          patch_cell->get_dof_values(loc_basis[i], temp_values);
-          global_cell->set_dof_values(temp_values, basis_function);
-
-        }
-
-        // for FullMatrix in dealii, is there a way to append a column vector to FullMatrix?
-        Eigen::VectorXd basis_function_temp((Nx * nx + 1) * (Nx * nx + 1));
-        for (unsigned int k = 0; k < basis_function.size(); k++) {
-          basis_function_temp(k) = basis_function[k];
-        }
-        Rms.col(Rms_i) = basis_function_temp;
-        
-        
-
-
-        // check basis functions
-
-        Vector<double> basis(Rms.rows());
-
-        for (unsigned int j = 0; j < Rms.rows(); j++) {
-          basis[j] = Rms(j, Rms_i);
-        }
-
-        // std::cout << "Rms_i = " << Rms_i << std::endl;
-        // std::cout << basis << std::endl; 
-
-
-        DataOut<dim> data_out;
-
-        data_out.attach_dof_handler(dof_handler);
-
-        data_out.add_data_vector(basis, "basis");
-
-        data_out.build_patches();
-
-        std::ofstream out("basis-global.vtk");
-
-        data_out.write_vtk(out);
-
-
-
-        Rms_i += 1;
-
-        
-      }
-
-      //  if (Rms_i == 1) {
-      //     break;
-      //   }
-
-    }
-
+      
+    saveData(saveFileName, Rms);
+    
     std::cout << "Finish building coarse basis. " << std::endl;
+
+  } else {
+    std::cout << "Start loading coarse basis. " << std::endl;
+    Eigen::MatrixXd Rms_loaded = openData(loadFileName);
+    std::cout << "Finish loading coarse basis. " << std::endl;
+
+    // test accuracy with different number of local basis 
+    
+    if (n_of_loc_basis < max_number_of_basis_computed) {
+      Eigen::MatrixXd Rms_temp;
+      Rms_temp.resize(fine_size, coarse_size);
+      
+      int Rms_temp_i = 0;
+      for (int i = 0; i < Rms_loaded.cols(); i += max_number_of_basis_computed) {
+        for (unsigned int j = 0; j < n_of_loc_basis; j++) {
+          Rms_temp.col(Rms_temp_i) = Rms_loaded.col(i + j);
+          Rms_temp_i++;
+        }
+
+      }
+
+      Rms = Rms_temp;
+    } else if (n_of_loc_basis == max_number_of_basis_computed) {
+      Rms = Rms_loaded;
+    } else {
+      std::cout << "n_of_loc_basis > max_number_of_basis_computed !" << std::endl;
+      std::cout << "can not do it with loading!" << std::endl;
+      std::cout << "change compute_Rms to true !" << std::endl;
+    }
+   
+  }
+  
+
+
+
 
 }
 
@@ -561,7 +674,7 @@ template <int dim>
 void Step4<dim>::coarse_sol()
 {
   // convert Rms to dealii type FullMatrix
-  Rms1.reinit(Rms.rows(), Rms.cols());
+  Rms1.reinit((Nx * nx + 1) * (Nx * nx + 1), n_of_loc_basis * (Nx - 1) * (Nx - 1));
   for (int i = 0; i < Rms.rows(); i++) {
     for (int j = 0; j < Rms.cols(); j++) {
       Rms1(i, j) = Rms(i, j);
@@ -573,13 +686,13 @@ void Step4<dim>::coarse_sol()
   FullMatrix<double> AfineDense;
   AfineDense.copy_from(Afine);
 
-
+  std::cout << "check point 1, this step takes time, keep waiting." << std::endl; 
   // Acoarse = R^T * Afine * R
   FullMatrix<double> Acoarse(coarse_size, coarse_size);
   FullMatrix<double> R_T_Afine(coarse_size, fine_size);
   Rms1.Tmmult(R_T_Afine, AfineDense);
   R_T_Afine.mmult(Acoarse, Rms1);
-
+  std::cout << "check point 2" << std::endl; 
   // F_coarse = R^T * F_fine;
   Vector<double> rhs_coarse(coarse_size);
   Rms1.Tvmult(rhs_coarse, rhs_fine);
@@ -608,7 +721,7 @@ void Step4<dim>::coarse_sol()
   Rms1.vmult(sol_coarse, sol_coarse_temp);
 
   // get error; relative L2error = 
-  // (sol_fine - sol_coarse) * Mfine * (sol_fine - sol_coarse) / (sol_fine * Mfine * sol_fine)
+  // (sol_fine - sol_coarse)' * Mfine * (sol_fine - sol_coarse) / (sol_fine' * Mfine * sol_fine)
   double L2error;
 
   Vector<double> difference = sol_fine;
@@ -627,6 +740,25 @@ void Step4<dim>::coarse_sol()
   L2error = numerator / denominator;
 
   std::cout << "the relative L2 error is : " << L2error << std:: endl;
+
+
+  // get error; relative Energy error = 
+  // (sol_fine - sol_coarse)' * Afine * (sol_fine - sol_coarse) / (sol_fine' * Afine * sol_fine)
+  double Eerror;
+
+  double Enumerator;
+  Vector<double> Afine_times_difference(fine_size);
+  Afine.vmult(Afine_times_difference, difference);
+  Enumerator = difference * Afine_times_difference;
+
+  double Edenominator;
+  Vector<double> Afine_times_sol_fine(fine_size);
+  Afine.vmult(Afine_times_sol_fine, sol_fine);
+  Edenominator = sol_fine * Afine_times_sol_fine;
+
+  Eerror = Enumerator / Edenominator;
+
+  std::cout << "the relative Energy error is : " << Eerror << std:: endl;
 
 
 }
@@ -680,7 +812,7 @@ void Step4<dim>::run()
 
   buildPOU();
   fine_sol();
-  global_grid();
+  build_coarse_basis();
   coarse_sol();
   output_results();
   

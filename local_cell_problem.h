@@ -440,54 +440,6 @@ void Local<dim>::solve()
 //   system_rhs_temp = system_rhs;
   
 
-
-  
-  // this is needed to know the index of the boundary nodes
-  // we can also use Functions::ZeroFunction<2>(), for BoundaryValues<dim>()
-  VectorTools::interpolate_boundary_values(dof_handler,
-                                            0,
-                                            BoundaryValues<dim>(),
-                                            boundary_values);
-
-  
-  Eigen::MatrixXd Rsnap(Alocal.m(), boundary_values.size());
-  int j = 0;    // column index for Rsnap
-  for (auto keyValuePair = boundary_values.begin(); keyValuePair != boundary_values.end(); keyValuePair++) {
-    keyValuePair->second = 1.0;
-    for (auto otherPair = boundary_values.begin(); otherPair != boundary_values.end(); otherPair++) {
-      if (otherPair->first == keyValuePair->first) continue;
-      otherPair->second = 0.0;
-    }
-
-
-
-    Vector<double> solution;
-    solution.reinit(dof_handler.n_dofs());
-
-    MatrixTools::apply_boundary_values(boundary_values,
-                                     Alocaltemp,
-                                     solution,
-                                     system_rhs, false);
-
-    SolverControl            solver_control(2000, 1e-5);
-    SolverCG<Vector<double>> solver(solver_control);
-
-
-    solver.solve(Alocaltemp, solution, system_rhs, PreconditionIdentity());
-
-    // std::cout << "   " << solver_control.last_step()
-    //         << " CG iterations needed to obtain convergence." << std::endl;
-
-
-
-    for (auto i = 0; i < Rsnap.rows(); i++) {
-      Rsnap(i,j) = solution[i];
-    }
-    j++;
-
-  }
-
-
   FullMatrix<double> AlocalDense(Alocal.m(), Alocal.n());
   AlocalDense.copy_from(Alocal);	
   FullMatrix<double> SlocalDense(Slocal.m(), Slocal.n());
@@ -501,69 +453,101 @@ void Local<dim>::solve()
       Slocal0(i, j) = SlocalDense[i][j];
     }
   }
-
   // remember to modify Slocal !!!!
   Slocal0 = Slocal0 / coarse_side / coarse_side;
 
-//   Eigen::MatrixXd Asnap = Rsnap.transpose() * Alocal0 * Rsnap;
-//   Eigen::MatrixXd Ssnap = Rsnap.transpose() * Slocal0 * Rsnap;
 
-
-//   // to ensure the matrices are symmetric
-//   // they are symmetric originally, only some machine error difference
-//   Asnap = (Asnap + Asnap.transpose()) / 2;
-//   Ssnap = (Ssnap + Ssnap.transpose()) / 2;
-
-
-//   Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXd> ges;
-
-//   ges.compute(Asnap, Ssnap);
-
-
-//   // std::cout << "The (complex) numerators of the generalzied eigenvalues are: " << ges.alphas().transpose() << std::endl;
-//   // std::cout << "The (real) denominatore of the generalzied eigenvalues are: " << ges.betas().transpose() << std::endl;
-// //   std::cout << "The (complex) generalzied eigenvalues are (alphas./beta): " << ges.eigenvalues().transpose() << std::endl;
-//   // std::cout << "The (complex) generalzied eigenvectors are: " << ges.eigenvectors().transpose() << std::endl;
-
-//   // // remember to modify the matrix Slocal
-
-
-//   Eigen::MatrixXd loc_basis0;
-//   loc_basis0 = Rsnap * ges.eigenvectors().leftCols(n_of_loc_basis);
-
-
-
-
-  // // testing Alocal and Slocal
-  // std::cout << "Alocal0 = " << std::endl;
-  // std::cout << Alocal0 << std::endl;
-  // std::cout << "Slocal0 = " << std::endl;
-  // std::cout << Slocal0 << std::endl;
-  // // testing
-
-  // for testing snapshot space
-
-
-  Alocal0 = (Alocal0 + Alocal0.transpose()) / 2;
-  Slocal0 = (Slocal0 + Slocal0.transpose()) / 2;
-  Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXd> ges;
-  ges.compute(Alocal0, Slocal0);
   Eigen::MatrixXd loc_basis0;
-  loc_basis0 = ges.eigenvectors().leftCols(n_of_loc_basis);
 
-  // for testing 
+
+  if (compute_snapshot_flag == 1) {
+    // this is needed to know the index of the boundary nodes
+    // we can also use Functions::ZeroFunction<2>(), for BoundaryValues<dim>()
+    VectorTools::interpolate_boundary_values(dof_handler,
+                                              0,
+                                              BoundaryValues<dim>(),
+                                              boundary_values);
+
+    
+    Eigen::MatrixXd Rsnap(Alocal.m(), boundary_values.size());
+    int j = 0;    // column index for Rsnap
+    for (auto keyValuePair = boundary_values.begin(); keyValuePair != boundary_values.end(); keyValuePair++) {
+      keyValuePair->second = 1.0;
+      for (auto otherPair = boundary_values.begin(); otherPair != boundary_values.end(); otherPair++) {
+        if (otherPair->first == keyValuePair->first) continue;
+        otherPair->second = 0.0;
+      }
+
+
+
+      Vector<double> solution;
+      solution.reinit(dof_handler.n_dofs());
+
+      MatrixTools::apply_boundary_values(boundary_values,
+                                      Alocaltemp,
+                                      solution,
+                                      system_rhs, false);
+
+      SolverControl            solver_control(2000, 1e-5);
+      SolverCG<Vector<double>> solver(solver_control);
+
+
+      solver.solve(Alocaltemp, solution, system_rhs, PreconditionIdentity());
+
+      // std::cout << "   " << solver_control.last_step()
+      //         << " CG iterations needed to obtain convergence." << std::endl;
+
+
+
+      for (auto i = 0; i < Rsnap.rows(); i++) {
+        Rsnap(i,j) = solution[i];
+      }
+      j++;
+
+    }
+
+
+
+
+    Eigen::MatrixXd Asnap = Rsnap.transpose() * Alocal0 * Rsnap;
+    Eigen::MatrixXd Ssnap = Rsnap.transpose() * Slocal0 * Rsnap;
+
+
+    // to ensure the matrices are symmetric
+    // they are symmetric originally, only some machine error difference
+    Asnap = (Asnap + Asnap.transpose()) / 2;
+    Ssnap = (Ssnap + Ssnap.transpose()) / 2;
+
+
+    Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXd> ges;
+
+    ges.compute(Asnap, Ssnap);
+
+
+    // std::cout << "The (complex) numerators of the generalzied eigenvalues are: " << ges.alphas().transpose() << std::endl;
+    // std::cout << "The (real) denominatore of the generalzied eigenvalues are: " << ges.betas().transpose() << std::endl;
+    // std::cout << "The (complex) generalzied eigenvalues are (alphas./beta): " << ges.eigenvalues().transpose() << std::endl;
+    // std::cout << "The (complex) generalzied eigenvectors are: " << ges.eigenvectors().transpose() << std::endl;
+
+
  
+    loc_basis0 = Rsnap * ges.eigenvectors().leftCols(n_of_loc_basis);
 
-  // for testing
-  // every entry of loc_basis0 is the same !!!!! check this !
-  // std::cout << "eigenvalues are " << std::endl;
-  // std::cout << ges.eigenvalues() << std::endl;
-  // std::cout << "all eigenvectors are " << std::endl;
-  // std::cout << ges.eigenvectors() << std::endl; 
 
-  // std::cout << loc_basis0 << std::endl;
 
-  // for testing 
+  } else {
+
+
+    Alocal0 = (Alocal0 + Alocal0.transpose()) / 2;
+    Slocal0 = (Slocal0 + Slocal0.transpose()) / 2;
+    Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXd> ges;
+    ges.compute(Alocal0, Slocal0);
+ 
+    loc_basis0 = ges.eigenvectors().leftCols(n_of_loc_basis);
+
+
+  }
+
 
 
 
@@ -608,35 +592,34 @@ void Local<dim>::solve()
 template <int dim>
 void Local<dim>::output_results() const
 {
-  DataOut<dim> data_out;
-
-  data_out.attach_dof_handler(dof_handler);
-
-
-
-  Vector<double> solution;
-  solution.reinit(dof_handler.n_dofs());
+  
   
 
-  for (int i = 0; i < loc_basis.rows(); i++) {
-    solution[i] = loc_basis(i, 0);
+  for (unsigned int k = 0; k < n_of_loc_basis; k++) {
+
+    DataOut<dim> data_out;
+    data_out.attach_dof_handler(dof_handler);
+
+    Vector<double> solution;
+    solution.reinit(dof_handler.n_dofs());
+
+    for (int i = 0; i < loc_basis.rows(); i++) {
+      solution[i] = loc_basis(i, k);
+    }
+
+
+    data_out.add_data_vector(solution, "solution");
+    
+
+    data_out.build_patches();
+
+    std::ofstream output("basis-local" + std::to_string(k) + ".vtk");
+
+    data_out.write_vtk(output);
   }
-//   std::cout << solution << std::endl;
-
-  data_out.add_data_vector(solution, "solution");
   
 
-  data_out.build_patches();
-
-  std::ofstream output("solution-basis-local.vtk");
-
-  data_out.write_vtk(output);
-
-  // DataOut<dim> data_out;
-  // data_out.add_data_vector(POU.reshaped(dof_handler.n_dofs(),1), "solution");
-  // std::ofstream output(dim == 2 ? "solution-2d.vtk" : "solution-3d.vtk");
-  // data_out.write_vtk(output);
-
+  
 }
 
 
@@ -651,7 +634,8 @@ Eigen::MatrixXd Local<dim>::run()
   setup_system();
   assemble_system();
   solve();
-  output_results();
+  // output_results();
+  std::cout << "local cell problem running." << std::endl;
 
   return loc_basis;
 }
