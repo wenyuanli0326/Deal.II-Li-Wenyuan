@@ -99,6 +99,7 @@ double BoundaryValues<dim>::value(const Point<dim> & /*p*/,
 }
 
 
+
 template <int dim>
 double kappa(const Point<dim> &p)
 {
@@ -236,6 +237,7 @@ class Local
 public:
   Local();
   Eigen::MatrixXd run();
+  // // check this !! the &;
   void setUp(Triangulation<dim> &input_triangulation, unsigned int input_n_of_loc_basis,
              Eigen::MatrixXd input_POU, Point<dim> input_coarse_center, 
              double input_fine_side, double input_coarse_side, int input_compute_snapshot_flag) 
@@ -286,15 +288,6 @@ private:
 
 
 
-// // check this !! the &;
-// template <int dim>
-// void Local<dim>::setUp(Triangulation<dim> &input_triangulation, unsigned int input_n_of_loc_basis,
-//                         Eigen::MatrixXd input_POU, Point<dim> input_coarse_center, 
-//                         double input_fine_side, double input_coarse_side)
-// {
-
-// }
-
 
 template <int dim>
 Local<dim>::Local()
@@ -307,12 +300,7 @@ Local<dim>::Local()
 template <int dim>
 void Local<dim>::make_grid()
 {
-
-  // std::cout << "   Number of active cells: " << triangulation.n_active_cells()
-  //           << std::endl
-  //           << "   Total number of cells: " << triangulation.n_cells()
-  //           << std::endl;
-
+// the make_grid() function is empty b/c we generate the grid in the GMsFEM class.
 }
 
 
@@ -411,11 +399,6 @@ void Local<dim>::assemble_system()
           system_rhs(local_dof_indices[i]) += cell_rhs(i);
         }
     }
-
-// remember to modify the matrix Slocal
-  
-
-
 
 }
 
@@ -628,7 +611,6 @@ void Local<dim>::output_results() const
 template <int dim>
 Eigen::MatrixXd Local<dim>::run()
 {
-
 
   make_grid();
   setup_system();

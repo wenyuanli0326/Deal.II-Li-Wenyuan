@@ -197,10 +197,10 @@ double RightHandSide<dim>::value(const Point<dim> & p,
 
 
 template <int dim>
-class Step4
+class GMsFEM
 {
 public:
-  Step4();
+  GMsFEM();
   void run();
 
 private:
@@ -228,10 +228,10 @@ private:
   const double cube_start = 0;
   const double cube_end = 1;
   int loc_refine_times = 3;
-  int global_refine_times = 3;
+  int global_refine_times = 4;
   int total_refine_times = loc_refine_times + global_refine_times;
 
-  int compute_snapshot_flag = 0;   // 0: don't compute; 1: compute
+  int compute_snapshot_flag = 1;   // 0: don't compute; 1: compute
   bool compute_Rms = true;   // true: compute, false: load from file
   // don't forget to change the name!
   std::string saveFileName = "Rms_useless.csv";
@@ -243,14 +243,19 @@ private:
 // central control panel
 
 
-// global + loc = total
-  int Nx = (int) pow(2, global_refine_times);     // number of coarse element in one row
+  // number of coarse element in one row
+  int Nx = (int) pow(2, global_refine_times);     
+  // the length of the coarse side
   double coarse_side = (cube_end - cube_start) / Nx;
-  int nx = (int) pow(2, loc_refine_times);        // number of fine element in a coarse element in a side
+
+  // number of fine element in a coarse element in a row
+  int nx = (int) pow(2, loc_refine_times);  
+  // the length of the fine side      
   double fine_side = coarse_side / nx; 
 
-
+  // the dof of the coarse sol
   int coarse_size = (Nx - 1) * (Nx - 1) * n_of_loc_basis;
+  // the dof of the fine sol
   int fine_size = (Nx * nx + 1) * (Nx * nx + 1);
 
   
@@ -271,7 +276,7 @@ private:
 
 
 template <int dim>
-Step4<dim>::Step4()
+GMsFEM<dim>::GMsFEM()
   : fe(1)
   , dof_handler(triangulation)
 {}
@@ -281,14 +286,11 @@ Step4<dim>::Step4()
 
 // build bilinear basis functions
 template <int dim>
-void Step4<dim>:: buildPOU()
+void GMsFEM<dim>:: buildPOU()
 {
   int size1 = (int) round(pow(2, loc_refine_times + 1)) + 1;
   int size2 = (int) round(pow(2, loc_refine_times)) + 1;
   double side = 1.0 / (size2 - 1);
-
-  // std::cout << size1 << std::endl;
-  // std::cout << size2 << std::endl;
 
   POU.resize(size1, size1);
   Eigen::MatrixXd topleft(size2, size2);
@@ -313,14 +315,13 @@ void Step4<dim>:: buildPOU()
   POU.block(size2, 0, size2 - 1, size2) = botleft.bottomRows(size2 - 1);
   POU.bottomRightCorner(size2 - 1, size2 - 1) = botright.bottomRightCorner(size2 - 1, size2 - 1);
 
-
 }
 
 
 
 
 template <int dim>
-void Step4<dim>:: build_coarse_basis()
+void GMsFEM<dim>:: build_coarse_basis()
 {
   Rms.resize(fine_size, coarse_size);
 
@@ -361,6 +362,13 @@ void Step4<dim>:: build_coarse_basis()
     
     int Rms_i = 0;
 
+    // const auto loop_body = [&](unsigned long i) { ... };
+    // const std_cxx20::ranges::iota_view<unsigned long, unsigned long> indices(0, coarse_centers.size());
+    // parallel::apply_to_subranges(indices.begin(), indices.end(), loop_body);
+    // make every operation local,
+    // workstream::run 
+    // worker = loop_body
+    // 
     for (unsigned long i = 0; i < coarse_centers.size(); i++)
       {
 
@@ -424,7 +432,10 @@ void Step4<dim>:: build_coarse_basis()
           }
           Rms.col(Rms_i) = basis_function_temp;
           
-          
+          // dealii parallel_for 
+          // parallel namespace
+          // apply to subrange
+          // 
 
 
           // // check basis functions
@@ -458,7 +469,7 @@ void Step4<dim>:: build_coarse_basis()
           
         }
         // // check basis functions
-        //  if (Rms_i >= 2) {
+        //  if (Rms_i >= 25) {
         //     break;
         //   }
         // // check basis functions
@@ -515,7 +526,7 @@ void Step4<dim>:: build_coarse_basis()
 
 // get fine grid matrices and solutions
 template <int dim>
-void Step4<dim>::fine_sol()
+void GMsFEM<dim>::fine_sol()
 {
 
   // make fine grid
@@ -671,10 +682,10 @@ void Step4<dim>::fine_sol()
 
 // get coarse grid matrices and solutions and calculate error
 template <int dim>
-void Step4<dim>::coarse_sol()
+void GMsFEM<dim>::coarse_sol()
 {
   // convert Rms to dealii type FullMatrix
-  Rms1.reinit((Nx * nx + 1) * (Nx * nx + 1), n_of_loc_basis * (Nx - 1) * (Nx - 1));
+  Rms1.reinit(fine_size, coarse_size);
   for (int i = 0; i < Rms.rows(); i++) {
     for (int j = 0; j < Rms.cols(); j++) {
       Rms1(i, j) = Rms(i, j);
@@ -708,25 +719,19 @@ void Step4<dim>::coarse_sol()
             << " CG iterations needed in coarse method to obtain convergence." << std::endl;
 
 
-  // std::cout << "Start to solve coarse solution. " << std::endl;
-  // Vector<double> sol_coarse_temp(coarse_size);
-  // SparseDirectUMFPACK AcoarseInverse;   // does not work for full matrix
-  // AcoarseInverse.initialize(Acoarse);
-  // AcoarseInverse.vmult(sol_coarse_temp, rhs_coarse);
-
-
   // convert the coarse grid solution back to fine grid;
   // sol_coarse = R * sol_coarse_temp
   sol_coarse.reinit(fine_size);
   Rms1.vmult(sol_coarse, sol_coarse_temp);
 
-  // get error; relative L2error = 
-  // (sol_fine - sol_coarse)' * Mfine * (sol_fine - sol_coarse) / (sol_fine' * Mfine * sol_fine)
-  double L2error;
 
+  // difference = sol_fine - sol_coarse
   Vector<double> difference = sol_fine;
   difference.add(-1.0, sol_coarse);
 
+  // get error; relative L2error = 
+  // difference' * Mfine * difference / (sol_fine' * Mfine * sol_fine)
+  double L2error;
   double numerator;
   Vector<double> Mfine_times_difference(fine_size);
   Mfine.vmult(Mfine_times_difference, difference);
@@ -767,7 +772,7 @@ void Step4<dim>::coarse_sol()
 
 
 template <int dim>
-void Step4<dim>::output_results() const 
+void GMsFEM<dim>::output_results() const 
 {
   DataOut<dim> data_out;
 
@@ -805,7 +810,7 @@ void Step4<dim>::output_results() const
 
 
 template <int dim>
-void Step4<dim>::run()
+void GMsFEM<dim>::run()
 {
   std::cout << "Solving problem in " << dim << " space dimensions."
             << std::endl;
@@ -824,18 +829,10 @@ void Step4<dim>::run()
 int main()
 {
   {
-    Step4<2> laplace_problem_2d;
-    laplace_problem_2d.run();
+    GMsFEM<2> GMsFEM_2d;
+    GMsFEM_2d.run();
   }
 
-  // {
-  //   Step4<3> laplace_problem_3d;
-  //   laplace_problem_3d.run();
-  // }
-
-  // RightHandSide<2> right_hand_side;
-  // Point<2> p(1,2);
-  // std::cout << "value = " << right_hand_side.value(p) << std::endl;
 
 
   return 0;
